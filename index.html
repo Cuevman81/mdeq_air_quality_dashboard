@@ -637,6 +637,15 @@
                 </button>
             </div>
             
+                <div style="text-align: center; margin: 15px auto; padding: 10px; background-color: #e7f3fe; border-left: 5px solid var(--primary-color);">
+                <p style="margin: 5px 0;">
+                    <a href="https://www.enviroflash.info/signup.cfm" target="_blank" rel="noopener noreferrer" class="share-button" style="text-decoration: none; display: inline-flex;">Sign Up for Forecast Emails (EnviroFlash)</a>
+                </p>
+                <div id="ozone-season-note" style="display: none; font-size: 0.9em; margin-top: 10px;">
+                    <strong>Note:</strong> The Mississippi ozone monitoring and forecasting season runs from March 1st to October 31st. The Jackson NCORE site monitors for ozone year-round.
+                </div>
+            </div>
+            
             <div id="forecast-loader" class="loader" aria-live="polite" aria-label="Loading forecast data"></div>
             <div id="forecast-error" class="error-message" aria-live="polite"></div>
             
@@ -750,6 +759,9 @@
             
             // Set up event listener for forecast data
             document.getElementById('pollutant-select').addEventListener('change', updateForecasts);
+            
+            // The event listener now calls our new reusable function
+            document.getElementById('pollutant-select').addEventListener('change', checkOzoneNoteVisibility);
             
             // Set up share buttons
             document.getElementById('share-map').addEventListener('click', () => shareContent('map'));
@@ -1001,6 +1013,28 @@
             if (aqi > 300) return { bgColor: '#7e0023', textColor: 'white' };
             return { bgColor: 'gray', textColor: 'white' };
         }
+        
+                // Helper object to store AQI category descriptions and health effects
+        const aqiCategoryInfo = {
+            'Good': {
+                description: 'Air quality is satisfactory, and air pollution poses little or no risk.'
+            },
+            'Moderate': {
+                description: 'Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution.'
+            },
+            'Unhealthy for Sensitive Groups': {
+                description: 'Members of sensitive groups may experience health effects. The general public is less likely to be affected.'
+            },
+            'Unhealthy': {
+                description: 'Some members of the general public may experience health effects; members of sensitive groups may experience more serious health effects.'
+            },
+            'Very Unhealthy': {
+                description: 'Health alert: The risk of health effects is increased for everyone.'
+            },
+            'Hazardous': {
+                description: 'Health warning of emergency conditions: everyone is more likely to be affected.'
+            }
+        };
         
                 // Reusable function to create a custom AQI marker
         function createAqiMarker(location, data, selectedParameter) {
@@ -2422,79 +2456,37 @@
             }
         }
 
-        // Function to display forecast - FIXED VERSION
+    // Function to display forecast - WITH HEALTH INFORMATION
         function displayForecast(data, elementId, pollutant) {
             const container = document.getElementById(elementId);
-            console.log(`[DEBUG] Displaying forecast for ${elementId}, pollutant: ${pollutant}`);
-            
             if (!data || data.length === 0) {
-                console.log(`[DEBUG] No forecast data available for ${elementId}`);
-                container.innerHTML = `
-                    <div class="forecast-item">
-                        <h3>No Forecast Available</h3>
-                        <p>No forecast data available for this location.</p>
-                    </div>
-                `;
+                container.innerHTML = `<div class="forecast-item"><h3>No Forecast Available</h3><p>No forecast data available for this location.</p></div>`;
                 return;
             }
             
-            // Filter for the selected pollutant
             const filteredData = data.filter(forecast => forecast.ParameterName === pollutant);
-            console.log(`[DEBUG] Filtered data count: ${filteredData.length}`);
-            
             if (filteredData.length === 0) {
-                console.log(`[DEBUG] No ${pollutant} forecast available for ${elementId}`);
-                container.innerHTML = `
-                    <div class="forecast-item">
-                        <h3>${data[0].ReportingArea}</h3>
-                        <p>No ${pollutant} forecast available for this location.</p>
-                    </div>
-                `;
+                container.innerHTML = `<div class="forecast-item"><h3>${data[0].ReportingArea}</h3><p>No ${pollutant} forecast available for this location.</p></div>`;
                 return;
             }
             
             let forecastHTML = '';
-            
-            // Process each forecast item
-            filteredData.forEach((forecast, index) => {
+            filteredData.forEach(forecast => {
                 const categoryClass = forecast.Category.Name.toLowerCase().replace(/ /g, '-');
-                
-                // FIXED: Handle UTC/Zulu time conversion to Central Time
-                // First, parse the date string from the API
-                const dateStr = forecast.DateForecast; // Format: "2025-03-09"
-                console.log(`[DEBUG] Processing date: ${dateStr} for item ${index}`);
-                
-                // Create a Date object from the string and adjust for timezone
-                // Mississippi is in Central Time (UTC-6 or UTC-5 during DST)
-                const [year, month, day] = dateStr.split('-').map(num => parseInt(num, 10));
-                
-                // Create date in local time to avoid timezone conversion issues
-                // We specify all components to ensure predictable behavior
+                const categoryInfo = aqiCategoryInfo[forecast.Category.Name];
+
+                const [year, month, day] = forecast.DateForecast.split('-').map(num => parseInt(num, 10));
                 const dateObj = new Date(year, month - 1, day, 12, 0, 0, 0);
-                
-                // DEBUG: Log the date conversion details
-                console.log(`[DEBUG] Original date string: ${dateStr}`);
-                console.log(`[DEBUG] Parsed components - Year: ${year}, Month: ${month-1} (0-based), Day: ${day}`);
-                console.log(`[DEBUG] Created date object: ${dateObj}`);
-                console.log(`[DEBUG] Date object ISO string: ${dateObj.toISOString()}`);
-                
-                // Format the date for display with US locale
-                const formattedDate = dateObj.toLocaleDateString('en-US', { 
-                    weekday: 'short', 
-                    month: 'short', 
-                    day: 'numeric' 
-                });
-                
-                console.log(`[DEBUG] Formatted date: ${formattedDate}`);
+                const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                 
                 forecastHTML += `
                     <div class="forecast-item ${categoryClass}">
                         <h3>${forecast.ReportingArea}</h3>
                         <p><strong>Date:</strong> ${formattedDate}</p>
-                        <p><strong>Pollutant:</strong> ${forecast.ParameterName}</p>
-                        ${forecast.AQI !== -1 ? `<p><strong>AQI:</strong> ${forecast.AQI}</p>` : ''}
+                        ${forecast.AQI !== -1 ? `<p style="font-size: 1.5rem; font-weight: bold; margin: 5px 0;">AQI: ${forecast.AQI}</p>` : ''}
                         <p><strong>Category:</strong> ${forecast.Category.Name}</p>
-                        ${forecast.Discussion ? `<p><strong>Discussion:</strong> ${forecast.Discussion}</p>` : ''}
+                        ${categoryInfo ? `<p style="font-size: 0.9rem; text-align: left; margin-top: 10px;"><em>${categoryInfo.description}</em></p>` : ''}
+                        ${forecast.Discussion ? `<p style="font-size: 0.9rem; text-align: left; margin-top: 10px;"><strong>Discussion:</strong> ${forecast.Discussion}</p>` : ''}
                     </div>
                 `;
             });
@@ -2550,8 +2542,18 @@
             }
         }
         
-        // Function to handle tab switching
-        function openTab(evt, tabName) {
+        function checkOzoneNoteVisibility() {
+            const ozoneNote = document.getElementById('ozone-season-note');
+            const pollutantSelect = document.getElementById('pollutant-select');
+            if (pollutantSelect.value === 'O3') {
+                ozoneNote.style.display = 'block';
+            } else {
+                ozoneNote.style.display = 'none';
+            }
+        }
+        
+            // Function to handle tab switching
+            function openTab(evt, tabName) {
             // Hide all tab content
             const tabcontent = document.getElementsByClassName("tabcontent");
             for (let i = 0; i < tabcontent.length; i++) {
@@ -2578,6 +2580,9 @@
             } else if (tabName === 'Forecast') {
                 // Trigger forecast update
                 updateForecasts();
+                // --- THIS IS THE NEW LINE ---
+                // Check if the ozone note should be visible immediately
+                checkOzoneNoteVisibility();
             }
         }
 
@@ -3105,20 +3110,18 @@
             else return '#7e0023';                    // Hazardous
         }
 
-       // Updated function for exceedance analysis using concentration values
-       function displayExceedanceAnalysis(data, area) {
-            // Clear previous charts
+            // REVISED function for exceedance analysis - With better browser compatibility
+            function displayExceedanceAnalysis(data, area) {
             clearCharts();
-            
-            // Hide statistical summary
             document.getElementById('statistical-summary').style.display = 'none';
             
-            // Show exceedance summary
             const exceedanceSummary = document.getElementById('exceedance-summary');
             exceedanceSummary.style.display = 'block';
             const exceedanceContent = document.getElementById('exceedance-content');
             
-            // Group data by parameter
+            let summaryHTML = '';
+
+            // More compatible way to group data
             const parameterGroups = {};
             data.forEach(entry => {
                 if (!parameterGroups[entry.parameter]) {
@@ -3126,177 +3129,84 @@
                 }
                 parameterGroups[entry.parameter].push(entry);
             });
-            
-            let summaryHTML = '';
-            
-            // Create exceedance analysis for each parameter
+
             Object.keys(parameterGroups).forEach(parameter => {
                 const parameterData = parameterGroups[parameter];
-                
-                // Define concentration thresholds based on parameter
-                // These are the concentration thresholds that correspond to AQI breakpoints
-                let exceedanceThreshold, moderateThreshold;
-                
-                switch(parameter) {
-                    case 'OZONE':
-                    case 'OZONE-8HR':
-                        // ppb - Corresponds to AQI 101 (Unhealthy for Sensitive Groups)
-                        exceedanceThreshold = 71;  
-                        // ppb - Corresponds to AQI 51 (Moderate)
-                        moderateThreshold = 55;    
-                        break;
-                        
-                    case 'PM2.5':
-                    case 'PM2.5-24hr':
-                        // µg/m³ - Updated with new standards
-                        exceedanceThreshold = 35.5;  // AQI 101
-                        moderateThreshold = 9.1;     // AQI 51 - updated from 12.1 to 9.1
-                        break;
-                        
-                    case 'PM10':
-                    case 'PM10-24hr':
-                        // µg/m³
-                        exceedanceThreshold = 155;   // AQI 101
-                        moderateThreshold = 55;      // AQI 51
-                        break;
-                        
-                    case 'NO2':
-                        // ppb
-                        exceedanceThreshold = 101;   // AQI 101
-                        moderateThreshold = 54;      // AQI 51
-                        break;
-                        
-                    case 'SO2':
-                    case 'SO2-24HR':
-                        // ppb
-                        exceedanceThreshold = 76;    // AQI 101
-                        moderateThreshold = 36;      // AQI 51
-                        break;
-                        
-                    case 'CO':
-                    case 'CO-8hr':
-                        // ppm
-                        exceedanceThreshold = 9.5;   // AQI 101
-                        moderateThreshold = 4.5;     // AQI 51
-                        break;
-                        
-                    default:
-                        // Default thresholds for unknown parameters
-                        exceedanceThreshold = 100;
-                        moderateThreshold = 50;
-                }
-                
-                // Get units for display
                 const units = getUnitsForParameter(parameter);
                 
-                // Count exceedances and warnings
+                let exceedanceThreshold;
+                if (parameter.startsWith('OZONE')) { exceedanceThreshold = 71; }
+                else if (parameter.startsWith('PM2.5')) { exceedanceThreshold = 35.5; }
+                else if (parameter.startsWith('PM10')) { exceedanceThreshold = 155; }
+                else if (parameter.startsWith('NO2')) { exceedanceThreshold = 101; }
+                else if (parameter.startsWith('SO2')) { exceedanceThreshold = 76; }
+                else if (parameter.startsWith('CO')) { exceedanceThreshold = 9.5; }
+                else { exceedanceThreshold = 101; }
+
                 const exceedances = parameterData.filter(d => parseFloat(d.value) >= exceedanceThreshold);
-                const moderateDays = parameterData.filter(d => 
-                    parseFloat(d.value) >= moderateThreshold && 
-                    parseFloat(d.value) < exceedanceThreshold
-                );
                 
-                // Group exceedances by month for visualization
-                const exceedancesByMonth = {};
-                exceedances.forEach(e => {
-                    const date = new Date(e.date);
-                    const monthYear = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2, '0')}`;
-                    if (!exceedancesByMonth[monthYear]) {
-                        exceedancesByMonth[monthYear] = 0;
+                const monthlyCounts = {};
+                exceedances.forEach(day => {
+                    const date = new Date(day.date + 'T12:00:00');
+                    const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    if (!monthlyCounts[monthYear]) {
+                        monthlyCounts[monthYear] = 0;
                     }
-                    exceedancesByMonth[monthYear]++;
+                    monthlyCounts[monthYear]++;
                 });
-                
-                // Create HTML for this parameter's exceedance summary
+
+                let exceedanceDatesHTML = '<p>No exceedance days (AQI > 100) were recorded in this period.</p>';
+                if (exceedances.length > 0) {
+                    const dateList = exceedances.map(e => `<li>${new Date(e.date + 'T12:00:00').toLocaleDateString('en-US')} (Value: ${e.value} ${units})</li>`).join('');
+                    exceedanceDatesHTML = `<details><summary style="cursor: pointer;">View ${exceedances.length} Exceedance Date(s)</summary><ul>${dateList}</ul></details>`;
+                }
+
                 summaryHTML += `
                     <div class="parameter-exceedance">
-                        <h4>${parameter} Exceedance Summary</h4>
-                        <p>Total exceedance days (>${exceedanceThreshold} ${units}, AQI > 100): <strong>${exceedances.length}</strong></p>
-                        <p>Moderate days (${moderateThreshold}-${exceedanceThreshold} ${units}, AQI 51-100): <strong>${moderateDays.length}</strong></p>
+                        <h4>${parameter} Exceedance Summary for ${area}</h4>
                         <p>Total days analyzed: <strong>${parameterData.length}</strong></p>
-                        
-                       <div style="margin-top: 10px; margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
-                            <strong>Concentration to AQI Conversion:</strong><br>
-                            • AQI > 100 (Unhealthy for Sensitive Groups): ${parameter} > ${exceedanceThreshold} ${units}<br>
-                            • AQI 51-100 (Moderate): ${parameter} ${moderateThreshold} - ${exceedanceThreshold-1} ${units}<br>
-                            • AQI 0-50 (Good): ${parameter} < ${moderateThreshold} ${units}
-                        </div>
+                        <p>Total Exceedance Days (AQI > 100): <strong>${exceedances.length}</strong></p>
+                        ${exceedanceDatesHTML}
                     </div>
                 `;
                 
-                // Create a chart container for this parameter
                 const chartDiv = document.createElement('div');
                 chartDiv.style.width = '100%';
-                chartDiv.style.maxWidth = '800px';
+                chartDiv.style.maxWidth = '1100px';
                 chartDiv.style.margin = '20px auto';
                 chartContainer.appendChild(chartDiv);
                 
                 const canvas = document.createElement('canvas');
                 chartDiv.appendChild(canvas);
                 
-                // Convert exceedancesByMonth to arrays for charting
-                const months = Object.keys(exceedancesByMonth).sort();
-                const exceedanceCounts = months.map(month => exceedancesByMonth[month]);
-                
-                // Format month labels to be more readable
-                const monthLabels = months.map(monthYear => {
-                    const [year, month] = monthYear.split('-');
-                    const date = new Date(parseInt(year), parseInt(month)-1, 1);
-                    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                });
-                
-                // Create the chart
-                const ctx = canvas.getContext('2d');
-                const chart = new Chart(ctx, {
+                const months = Object.keys(monthlyCounts).sort();
+                const monthLabels = months.map(my => new Date(my + '-01T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+                const exceedanceCounts = months.map(m => monthlyCounts[m]);
+
+                new Chart(canvas.getContext('2d'), {
                     type: 'bar',
                     data: {
                         labels: monthLabels,
                         datasets: [{
-                            label: `${parameter} Exceedance Days by Month`,
+                            label: 'Exceedance Days (AQI > 100)',
                             data: exceedanceCounts,
-                            backgroundColor: '#ff7e00', // Orange for exceedance
-                            borderColor: '#ff0000',     // Red border
-                            borderWidth: 1
+                            backgroundColor: '#ff7e00',
                         }]
                     },
                     options: {
-                        responsive: true,
                         plugins: {
-                            title: {
-                                display: true,
-                                text: `${parameter} Exceedance Days for ${area} (${units} > ${exceedanceThreshold})`,
-                                font: {
-                                    size: 16,
-                                    weight: 'bold'
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    afterLabel: function(context) {
-                                        return `Days with ${parameter} > ${exceedanceThreshold} ${units} (AQI > 100)`;
-                                    }
-                                }
-                            }
+                            title: { display: true, text: `Monthly Exceedance Days for ${parameter}` },
                         },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Exceedance Days'
-                                },
-                                ticks: {
-                                    stepSize: 1
-                                }
+                            y: { 
+                                beginAtZero: true, 
+                                title: { display: true, text: 'Number of Exceedance Days' },
+                                ticks: { stepSize: 1 }
                             }
                         }
                     }
                 });
-                
-                charts.push(chart);
             });
-            
-            // Display the summary HTML
             exceedanceContent.innerHTML = summaryHTML;
         }
 
