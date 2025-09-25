@@ -376,6 +376,10 @@
                 height: 400px;
             }
             
+            #burn-map-iframe {
+                height: 400px;
+            }
+            
             .forecast-item {
                 flex: 1 1 100%;
                 margin: 10px 0;
@@ -428,6 +432,7 @@
             <button class="tablinks" onclick="openTab(event, 'HistoricalData')" role="tab" aria-selected="false" aria-controls="HistoricalData">Historical Data</button>
             <button class="tablinks" onclick="openTab(event, 'Trends')" role="tab" aria-selected="false" aria-controls="Trends">Historical Trends</button>
             <button class="tablinks" onclick="openTab(event, 'Forecast')" role="tab" aria-selected="false" aria-controls="Forecast">Air Quality Forecast</button>
+            <button class="tablinks" onclick="openTab(event, 'BurnPermits')" role="tab" aria-selected="false" aria-controls="BurnPermits">MFC Burn Permits</button>
             <a href="https://www.airnow.gov/" target="_blank" rel="noopener noreferrer">AirNow.gov</a>
             <a href="https://fire.airnow.gov/" target="_blank" rel="noopener noreferrer">Fire & Smoke Map</a>
             <a href="https://www.airnow.gov/aqi/" target="_blank" rel="noopener noreferrer">AQI Info</a>
@@ -654,6 +659,23 @@
                 <div id="forecast-jackson" class="forecast-item"></div>
                 <div id="forecast-gulf-coast" class="forecast-item"></div>
             </div>
+        </section>
+        
+                <section id="BurnPermits" class="tabcontent" role="tabpanel">
+            <h2>Mississippi Burn Permit Map</h2>
+            <p style="text-align: center; margin: 15px auto; padding: 10px; background-color: #e7f3fe; border-left: 5px solid var(--primary-color);">
+                The following map is provided by the Mississippi Forestry Commission (MFC). For the best experience or if the map below does not load, 
+                <a href="https://mfcgis.maps.arcgis.com/apps/instant/basic/index.html?appid=14bb6f3f82b14f8e9df45eff193b809a" target="_blank" rel="noopener noreferrer">
+                view it on the official MFC website</a>.
+            </p>
+            <iframe 
+                id="burn-map-iframe"
+                title="MFC Burn Permits Public Viewer Map"
+                width="100%" 
+                height="600" 
+                style="border:none;"
+                src="https://mfcgis.maps.arcgis.com/apps/instant/basic/index.html?appid=14bb6f3f82b14f8e9df45eff193b809a">
+            </iframe>
         </section>
     </main>
     
