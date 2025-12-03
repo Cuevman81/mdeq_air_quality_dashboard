@@ -994,6 +994,10 @@
         
         // Function to initialize map
         function initMap() {
+            // Prevent "Map container is already initialized" error
+            if (map) {
+                map.remove();
+            }
             map = L.map('map').setView([32.3547, -89.3985], 7);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -1005,6 +1009,9 @@
 
         // Function to initialize historical map
         function initHistoricalMap() {
+            if (historicalMap) {
+                historicalMap.remove();
+            }
             historicalMap = L.map('historical-map').setView([32.3547, -89.3985], 7);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -1098,72 +1105,36 @@
             });
         }
         
-        // Function to get the URL for hourly data
+       // Function to get the URL for hourly data
         function getHourlyDataUrl(date) {
-            // If no date is provided, use current date
+            // Use provided date or current time
+            const targetDate = date ? new Date(date) : new Date();
             const now = new Date();
-            let selectedDate = date ? new Date(date) : new Date();
             
-            // Get current UTC date and time
-            const nowUTC = new Date(Date.UTC(
-                now.getUTCFullYear(),
-                now.getUTCMonth(),
-                now.getUTCDate(),
-                now.getUTCHours(),
-                now.getUTCMinutes()
-            ));
-            
-            // Check if we're at the UTC day boundary (7PM CDT / 00Z UTC)
-            const isAtDayBoundary = now.getUTCHours() === 0 && 
-                                selectedDate.toDateString() === now.toDateString();
-            
-            // Determine target hour based on current time
-            let targetHour;
-            let targetDate = new Date(selectedDate);
-            
-            if (isAtDayBoundary) {
-                // At 7PM CDT (00Z of next day), we want previous day's hour 23
-                targetHour = 23;
-                targetDate.setDate(targetDate.getDate() - 1); // Use previous day
-                console.log("Day boundary detected (7PM CDT / 00Z UTC) - Using previous day with hour 23");
-            } else if (selectedDate.toDateString() === now.toDateString()) {
-                // For today (not at boundary), use most recent hour
-                // If we're in the first 15 minutes of a new hour, use the hour before the previous hour
-                // This adds a buffer for data availability
+            // If we are requesting "now" (not a historical date selected by user),
+            // apply a time buffer because AirNow data files are usually uploaded 
+            // 15-20 minutes past the hour.
+            if (!date || targetDate.toDateString() === now.toDateString()) {
                 const minutes = now.getMinutes();
-                if (minutes < 10) {
-                    targetHour = Math.max(now.getUTCHours() - 2, 0);
-                    console.log(`First 10 minutes of hour detected (${minutes} min) - Using hour from 2 hours ago`);
-                    if (targetHour === 0 && now.getUTCHours() <= 1) {
-                        // If it's the first or second hour of the day UTC and we need to go back 2 hours, use previous day
-                        targetHour = now.getUTCHours() === 0 ? 22 : 23;
-                        targetDate.setDate(targetDate.getDate() - 1);
-                        console.log(`Early hours - Using previous day with hour ${targetHour}`);
-                    }
-                } else {
-                    // Otherwise use the previous hour as before
-                    targetHour = Math.max(now.getUTCHours() - 1, 0);
-                    if (targetHour === 0 && now.getUTCHours() === 0) {
-                        // If it's just after midnight UTC, use previous day's hour 23
-                        targetHour = 23;
-                        targetDate.setDate(targetDate.getDate() - 1);
-                    }
-                }
+                // If we are in the first 20 minutes of the hour, go back 2 hours
+                // Otherwise, go back 1 hour
+                const hoursBack = minutes < 20 ? 2 : 1;
+                targetDate.setHours(now.getHours() - hoursBack);
             } else {
-                // For past dates, use the end of day
-                targetHour = 23;
+                // For past dates, default to the last hour of that day
+                targetDate.setHours(23);
             }
+
+            // Extract UTC components for the file path (AirNow files are named in UTC)
+            const year = targetDate.getUTCFullYear();
+            const month = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(targetDate.getUTCDate()).padStart(2, '0');
+            const hour = String(targetDate.getUTCHours()).padStart(2, '0');
             
-            // Format the date components for the URL
-            let year = targetDate.getUTCFullYear();
-            let month = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
-            let day = String(targetDate.getUTCDate()).padStart(2, '0');
-            let hour = String(targetHour).padStart(2, '0');
+            console.log(`Fetching data for UTC: ${year}-${month}-${day} ${hour}:00`);
             
-            console.log(`Fetching data for: ${year}-${month}-${day} ${hour}:00 UTC`);
-            console.log(`Local time: ${now.toLocaleString()}, UTC time: ${nowUTC.toISOString()}`);
-            
-            return `https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/HourlyData_${year}${month}${day}${hour}.dat`;
+            // Fixed URL: Removed the double slash after amazonaws.com
+            return `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/today/HourlyData_${year}${month}${day}${hour}.dat`;
         }
         
         // Function to fetch and display hourly data
@@ -1498,7 +1469,7 @@
                     const day = String(targetDate.getUTCDate()).padStart(2, '0');
                     const hour = String(targetDate.getUTCHours()).padStart(2, '0');
                     
-                    const url = `https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/${year}/${year}${month}${day}/HourlyData_${year}${month}${day}${hour}.dat`;
+                    const url = `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/${year}/${year}${month}${day}/HourlyData_${year}${month}${day}${hour}.dat`;
                     
                     try {
                         // Check if data is already in cache
@@ -1780,41 +1751,32 @@
             tableContainer.innerHTML = tableHTML;
         }
 
-        // Function to convert Zulu time to Central Time
+       // Function to convert Zulu time to Central Time (Auto-detects CST/CDT)
         function convertZuluToCentralTime(zuluTime, dateStr, showEndTime = true) {
-    // Parse the time
-    const [hours, minutes] = zuluTime.split(':').map(num => parseInt(num, 10));
-    
-    // Parse the date
-    const [month, day, yearShort] = dateStr.split('/').map(num => parseInt(num, 10));
-    const year = 2000 + yearShort;
-    
-    // Create a date object representing this time in UTC
-    const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes));
-    
-    // Apply the offset for CDT
-    const centralOffset = -5;
-    
-    // If showing end time, add 1 hour to show when the measurement period ends
-    const adjustedHours = showEndTime ? hours + 1 : hours;
-    
-    // Calculate central time hours
-    const centralHoursUTC = adjustedHours + centralOffset;
-    let centralHours = centralHoursUTC;
-    if (centralHours < 0) {
-        centralHours += 24;
-    }
-    
-    // Format with AM/PM
-    const ampm = centralHours >= 12 ? 'PM' : 'AM';
-    centralHours = centralHours % 12;
-    centralHours = centralHours ? centralHours : 12;
-    
-    // Format minutes
-    const centralMinutes = String(minutes).padStart(2, '0');
-    
-    return `${centralHours}:${centralMinutes} ${ampm}`;
-}
+            // Parse the time
+            const [hours, minutes] = zuluTime.split(':').map(num => parseInt(num, 10));
+            
+            // Parse the date (Format: MM/DD/YY)
+            const [month, day, yearShort] = dateStr.split('/').map(num => parseInt(num, 10));
+            const year = 2000 + yearShort;
+            
+            // Create a date object representing this time in UTC
+            const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+            
+            // If showing end time, add 1 hour to show when the measurement period ends
+            if (showEndTime) {
+                utcDate.setUTCHours(utcDate.getUTCHours() + 1);
+            }
+            
+            // Use Intl.DateTimeFormat to automatically handle Standard vs Daylight time
+            // based on the specific date and the America/Chicago timezone
+            return new Intl.DateTimeFormat('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'America/Chicago'
+            }).format(utcDate);
+        }
         
         // Function to fetch historical data
         function fetchHistoricalData(date) {
@@ -2165,7 +2127,7 @@
                     return;
                 }
                 
-                const response = await fetch('https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/ten_day_lookback.dat');
+                const response = await fetch('https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/today/ten_day_lookback.dat');
                 if (!response.ok) {
                     throw new Error('Failed to fetch trend data. Server returned status: ' + response.status);
                 }
@@ -2424,7 +2386,13 @@
             forecastLoader.style.display = 'block';
             
             const apiKey = 'F20E6AAA-D56F-E511-A968DF4E5E4316FD';
-            const currentDate = new Date().toISOString().split('T')[0];
+            
+            // FIX: Use Mississippi local date (America/Chicago) instead of UTC
+            // 'en-CA' format ensures YYYY-MM-DD output
+            const currentDate = new Date().toLocaleDateString('en-CA', { 
+                timeZone: 'America/Chicago' 
+            });
+
             const apiUrl = `https://www.airnowapi.org/aq/forecast/zipCode/?format=application/json&zipCode=${zipCode}&date=${currentDate}&distance=25&API_KEY=${apiKey}`;
             const pollutant = document.getElementById('pollutant-select').value;
             
