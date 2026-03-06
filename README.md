@@ -2,6 +2,8 @@
 
 A high-performance, interactive dashboard built for the Mississippi Department of Environmental Quality (MDEQ) to visualize real-time and historical air quality data across the state.
 
+**Live Deployment:** [https://mdeq-air-quality-dashboard.vercel.app/](https://mdeq-air-quality-dashboard.vercel.app/)
+
 ## 🌟 Key Features
 
 - **Real-Time Statewide Overview**: Instantly view the current overall air quality status, the highest reported site (hotspot), and actionable health recommendations based on EPA AQI standards.
@@ -21,27 +23,12 @@ This dashboard is built with speed in mind to handle large datasets and frequent
 ## 🛠️ Technology Stack
 
 - **Framework**: [Next.js](https://nextjs.org/) (React)
+- **Deployment**: [Vercel](https://vercel.com/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Mapping**: [React-Leaflet](https://react-leaflet.js.org/) (with OpenStreetMap tiles)
 - **Charting**: [Chart.js](https://www.chartjs.org/) & [react-chartjs-2](https://react-chartjs-2.js.org/)
 - **Data Source**: Official AirNow API and S3 data buckets
-
-## 💻 Local Development
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ## 📂 Project Structure
 
