@@ -1,6 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mississippi Ambient Air Quality Dashboard
 
-## Getting Started
+A high-performance, interactive dashboard built for the Mississippi Department of Environmental Quality (MDEQ) to visualize real-time and historical air quality data across the state.
+
+## 🌟 Key Features
+
+- **Real-Time Statewide Overview**: Instantly view the current overall air quality status, the highest reported site (hotspot), and actionable health recommendations based on EPA AQI standards.
+- **Interactive Map**: A dynamic Mapbox/Leaflet integration showing all active air monitoring stations with color-coded markers representing current AQI levels.
+- **Historical Analysis**: Seamlessly select past dates to review historical daily averages with automatic data fetching.
+- **Pollutant Trends**: View historical 10-day trends for individual sites and pollutants (Ozone, PM2.5, NOy, CO, SO2) with interactive charts.
+- **Air Quality Forecasts**: Search by zip code to get multi-day air quality forecasts directly from AirNow.
+- **MFC Burn Permits Integration**: Dedicated dashboard for viewing active prescribed burn permits issued by the Mississippi Forestry Commission.
+
+## 🚀 Performance Optimizations
+
+This dashboard is built with speed in mind to handle large datasets and frequent updates:
+- **Server-Side Proxy Caching**: Implements a highly efficient proxy route (`/api/proxy`) with Next.js caching. This securely fetches external data from AirNow's S3 buckets while avoiding CORS issues and caching the payload for 5 minutes, resulting in near-instant load times for end-users.
+- **Lazy Loading**: Map components and heavy charts are dynamically imported (`next/dynamic`) to reduce the initial JavaScript payload.
+- **Smart Rollover Logic**: Robust data fetchers intelligently handle "top of the hour" data gaps when AirNow publishes empty placeholder files, automatically falling back to the last known good hour.
+
+## 🛠️ Technology Stack
+
+- **Framework**: [Next.js](https://nextjs.org/) (React)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Mapping**: [React-Leaflet](https://react-leaflet.js.org/) (with OpenStreetMap tiles)
+- **Charting**: [Chart.js](https://www.chartjs.org/) & [react-chartjs-2](https://react-chartjs-2.js.org/)
+- **Data Source**: Official AirNow API and S3 data buckets
+
+## 💻 Local Development
 
 First, run the development server:
 
@@ -16,21 +43,9 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📂 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/page.tsx`: The main dashboard page and layout.
+- `src/components/`: Reusable UI components including the `AQIMap`, `SummaryCards`, `TrendsChart`, and `ForecastView`.
+- `src/lib/data.ts`: The central `DataService` logic responsible for parsing AirNow `.dat` files, calculating statewide summaries, and managing AQI thresholds.
+- `src/app/api/proxy/route.ts`: The backend mechanism for bypassing CORS and implementing server-side short-term caching.
