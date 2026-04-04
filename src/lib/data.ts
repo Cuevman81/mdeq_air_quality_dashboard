@@ -80,13 +80,14 @@ export class DataService {
             const hour = String(targetDate.getUTCHours()).padStart(2, '0');
 
             s3Url = `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/today/HourlyData_${year}${month}${day}${hour}.dat`;
+            // Add cache buster for real-time search
+            return `/api/proxy?url=${encodeURIComponent(s3Url)}&cb=${Date.now()}`;
         } else {
             const [y, m, d] = dateStr.split('-');
             const hour = String(23 - absoluteOffset).padStart(2, '0'); 
             s3Url = `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/${y}/${y}${m}${d}/HourlyData_${y}${m}${d}${hour}.dat`;
+            return `/api/proxy?url=${encodeURIComponent(s3Url)}`;
         }
-
-        return `/api/proxy?url=${encodeURIComponent(s3Url)}`;
     }
 
     static parseDatFile(content: string) {
@@ -130,42 +131,42 @@ export class DataService {
                 const parameter = parts[5];
                 const units = parts[6];
                 const value = parseFloat(parts[7]);
-                const aqi = parts.length > 8 ? parts[8] : '';
-                const aqiCategory = parts.length > 9 ? parts[9] : '';
 
-                // Find the exact matching key from CONFIG.sites to ensure casing alignment for UI filters
+                // Calculate AQI category from thresholds since index 8 is usually Agency name
+                const aqiInfo = this.getAQIInfo(parameter, value);
+                const aqiValue = aqiInfo ? String(Math.round(value)) : '';
+                const category = aqiInfo?.category || '';
+
                 const mappedSiteName = Object.keys(CONFIG.sites).find(
                     k => k.toLowerCase() === siteName.toLowerCase()
                 ) || siteName;
 
                 const location = CONFIG.sites[mappedSiteName as keyof typeof CONFIG.sites];
-
-                // Either it's a known MS site OR the reporting agency (index 8) is 'Mississippi DEQ'
                 const isMississippi = location || (parts.length > 8 && parts[8].includes('Mississippi'));
 
                 if (isMississippi && siteName && parameter && !isNaN(value)) {
-                    // Specific user request: Remove RWD (windspeed) level for Jackson NCORE
-                    if (mappedSiteName === 'Jackson NCORE' && parameter === 'RWD') {
-                        return; // Skip this data point
-                    }
+                    if (mappedSiteName === 'Jackson NCORE' && parameter === 'RWD') return;
 
-                    const dataPoint = { siteName: mappedSiteName, parameter, units, value, aqi, aqiCategory, location: location || null, date: obsDate, time: obsTime };
+                    const dataPoint = { siteName: mappedSiteName, parameter, units, value, aqi: aqiValue, aqiCategory: category, location: location || null, date: obsDate, time: obsTime };
 
                     mssites.push(dataPoint);
                     parameters.add(parameter);
-                    if (!parameterData[parameter]) {
-                        parameterData[parameter] = [];
-                    }
+                    if (!parameterData[parameter]) parameterData[parameter] = [];
                     parameterData[parameter].push(dataPoint);
                 }
             }
         });
 
-        return {
-            allData: mssites,
-            parameters: Array.from(parameters).sort(),
-            parameterData
-        };
+        // Ensure results are sorted by time descending (freshest at index 0)
+        mssites.sort((a, b) => {
+          try {
+            const da = new Date(`${a.date} ${a.time}`).getTime();
+            const db = new Date(`${b.date} ${b.time}`).getTime();
+            return db - da;
+          } catch (e) { return 0; }
+        });
+
+        return { allData: mssites, parameters: Array.from(parameters).sort(), parameterData };
     }
 
     static getStatewideSummary(allData: AQIDataPoint[]) {
