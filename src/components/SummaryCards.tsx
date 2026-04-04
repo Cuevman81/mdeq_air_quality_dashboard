@@ -6,6 +6,7 @@ import { ShieldCheck, Activity, Wind, Heart } from 'lucide-react';
 interface SummaryData {
     maxAQI: number;
     hotspotSite: string;
+    hotspotSites?: string[];
     category: string;
     color: string;
     parameter: string;
@@ -13,6 +14,16 @@ interface SummaryData {
 
 export default function SummaryCards({ summary }: { summary: SummaryData | null }) {
     if (!summary) return null;
+
+    const isMultiHotspot = summary.hotspotSites && summary.hotspotSites.length > 1;
+    const hotspotLabel = isMultiHotspot ? 'Regional Hotspots' : 'Regional Hotspot';
+    
+    // Display logic: "SITE1 & SITE2" if 2, or "X LOCATIONS" if more.
+    const hotspotDisplay = isMultiHotspot 
+        ? (summary.hotspotSites!.length <= 2 
+            ? summary.hotspotSites!.join(' & ') 
+            : `${summary.hotspotSites!.length} Locations`)
+        : summary.hotspotSite;
 
     const getHealthTip = (category: string) => {
         switch (category) {
@@ -78,9 +89,9 @@ export default function SummaryCards({ summary }: { summary: SummaryData | null 
                         <Activity size={28} />
                     </div>
                     <div>
-                        <h3 className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Regional Hotspot</h3>
-                        <p className="text-slate-900 dark:text-white font-black text-xl leading-tight mt-0.5 truncate max-w-[160px]">
-                            {summary.hotspotSite}
+                        <h3 className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">{hotspotLabel}</h3>
+                        <p className={`text-slate-900 dark:text-white font-black leading-tight mt-0.5 truncate ${isMultiHotspot ? 'text-lg' : 'text-xl'} max-w-[180px]`}>
+                            {hotspotDisplay}
                         </p>
                     </div>
                 </div>

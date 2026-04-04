@@ -187,31 +187,42 @@ export class DataService {
             'Unknown': 0
         };
 
-        let hotspotPoint = allData[0];
         let maxRank = 0;
+        let maxValue = -1;
 
+        // First find the threshold for the "worst" current conditions
         allData.forEach(p => {
             const info = this.getAQIInfo(p.parameter, p.value);
             const category = info?.category || 'Unknown';
             const rank = severityRank[category] || 0;
 
-            // Prioritize higher AQI category, or higher raw value within the same category
             if (rank > maxRank) {
                 maxRank = rank;
-                hotspotPoint = p;
-            } else if (rank === maxRank && p.value > hotspotPoint.value) {
-                hotspotPoint = p;
+                maxValue = p.value;
+            } else if (rank === maxRank && p.value > maxValue) {
+                maxValue = p.value;
             }
         });
 
-        const finalInfo = this.getAQIInfo(hotspotPoint.parameter, hotspotPoint.value);
+        // Collect all sites that hit both the max rank AND the max value
+        const tiedSites = allData.filter(p => {
+            const info = this.getAQIInfo(p.parameter, p.value);
+            const rank = severityRank[info?.category || 'Unknown'] || 0;
+            return rank === maxRank && p.value === maxValue;
+        });
+
+        // Distinct site names
+        const hotspotNames = Array.from(new Set(tiedSites.map(s => s.siteName)));
+        const primaryPoint = tiedSites[0];
+        const finalInfo = this.getAQIInfo(primaryPoint.parameter, primaryPoint.value);
 
         return {
-            maxAQI: hotspotPoint.value,
-            hotspotSite: hotspotPoint.siteName,
+            maxAQI: maxValue,
+            hotspotSite: hotspotNames[0], // Backward compatibility
+            hotspotSites: hotspotNames,
             category: finalInfo?.category || 'Unknown',
             color: finalInfo?.color || '#cbd5e1',
-            parameter: hotspotPoint.parameter
+            parameter: primaryPoint.parameter
         };
     }
 
