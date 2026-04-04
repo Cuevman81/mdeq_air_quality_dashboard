@@ -118,7 +118,7 @@ export default function Dashboard() {
           <p className="text-[10px] uppercase tracking-widest text-sky-300/60 font-bold mt-1">Real-time Dashboard</p>
         </div>
 
-        <nav className="flex flex-col gap-2 mb-auto overflow-x-auto md:overflow-visible">
+        <nav className="flex flex-col gap-2 overflow-x-auto md:overflow-visible">
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -134,19 +134,29 @@ export default function Dashboard() {
               </button>
             )
           })}
-        </nav>
 
-        <div className="mt-8 pt-6 border-t border-white/10 flex flex-col gap-4 text-sm">
-          <p className="text-white/40 font-bold tracking-widest text-[10px] uppercase mb-1">External Resources</p>
-          <a href="https://www.airnow.gov/" target="_blank" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors group">
-            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 group-hover:scale-125 transition-transform"></span>
-            AirNow.gov
-          </a>
-          <a href="https://fire.airnow.gov/" target="_blank" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors group">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 group-hover:scale-125 transition-transform"></span>
-            Fire & Smoke Map
-          </a>
-        </div>
+          <div className="mt-8 pt-6 border-t border-white/10 flex flex-col gap-4 text-sm">
+            <p className="text-white/40 font-bold tracking-widest text-[10px] uppercase mb-1">External Resources</p>
+            <a href="https://www.airnow.gov/" target="_blank" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors group">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 group-hover:scale-125 transition-transform"></span>
+              AirNow.gov
+            </a>
+            <a href="https://fire.airnow.gov/" target="_blank" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors group">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 group-hover:scale-125 transition-transform"></span>
+              Fire & Smoke Map
+            </a>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-white/10 text-xs">
+            <p className="text-white/40 font-bold tracking-widest text-[10px] uppercase mb-3">Questions & Feedback</p>
+            <div className="bg-white/5 rounded-xl p-4 border border-white/5 hover:bg-white/10 transition-colors">
+              <p className="font-bold text-white mb-1">Rodney Cuevas</p>
+              <a href="mailto:RCuevas@mdeq.ms.gov" className="text-sky-300/80 hover:text-sky-300 font-medium break-all">
+                RCuevas@mdeq.ms.gov
+              </a>
+            </div>
+          </div>
+        </nav>
       </aside>
 
       {/* Main Content */}
