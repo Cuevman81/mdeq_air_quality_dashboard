@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ShieldCheck, AlertTriangle, Wind, Activity, Heart, Info } from 'lucide-react';
+import { ShieldCheck, Activity, Wind, Heart } from 'lucide-react';
 
 interface SummaryData {
     maxAQI: number;
@@ -46,71 +46,77 @@ export default function SummaryCards({ summary }: { summary: SummaryData | null 
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10 animate-in fade-in slide-in-from-top-6 duration-1000 ease-out">
             {/* Statewide Status Card */}
-            <div className="bg-white/80 backdrop-blur-md border border-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-                <div className="absolute -right-4 -top-4 w-24 h-24 bg-sky-50 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500"></div>
-                <div className="flex items-center gap-4 mb-4 relative">
-                    <div className="w-12 h-12 rounded-2xl bg-sky-100 flex items-center justify-center text-sky-600">
-                        <Wind size={24} />
+            <div className="glass-card p-8 group relative overflow-hidden">
+                <div className="absolute -right-6 -top-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+                <div className="flex items-center gap-5 mb-6 relative">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner border border-primary/10">
+                        <Wind size={28} />
                     </div>
                     <div>
-                        <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest">Statewide Status</h3>
-                        <p className="text-slate-800 font-bold text-lg leading-tight">
+                        <h3 className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Statewide Status</h3>
+                        <p className="text-slate-900 dark:text-white font-black text-xl leading-tight mt-0.5">
                             {getStatusMessage(summary.category)}
                         </p>
                     </div>
                 </div>
-                <div className="flex items-baseline gap-2 relative">
-                    <span className="text-4xl font-black text-slate-900 tracking-tighter">{getStatusEmoji(summary.category)}</span>
-                    <span className="text-slate-500 font-medium text-sm">Overall: <span className="text-slate-800 font-bold">{summary.category}</span></span>
+                <div className="flex items-center gap-3 relative">
+                    <span className="text-5xl font-black">{getStatusEmoji(summary.category)}</span>
+                    <div className="flex flex-col">
+                        <span className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-wider">Current Condition</span>
+                        <span className="text-slate-900 dark:text-white font-black text-lg">{summary.category}</span>
+                    </div>
                 </div>
             </div>
 
             {/* Hotspot Card */}
-            <div className="bg-white/80 backdrop-blur-md border border-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-                <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-50 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500"></div>
-                <div className="flex items-center gap-4 mb-4 relative">
-                    <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-600">
-                        <Activity size={24} />
+            <div className="glass-card p-8 group relative overflow-hidden">
+                <div className="absolute -right-6 -top-6 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+                <div className="flex items-center gap-5 mb-6 relative">
+                    <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 shadow-inner border border-orange-500/10">
+                        <Activity size={28} />
                     </div>
                     <div>
-                        <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest">Highest Reported Site</h3>
-                        <p className="text-slate-800 font-bold text-lg leading-tight truncate max-w-[180px]">
+                        <h3 className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Regional Hotspot</h3>
+                        <p className="text-slate-900 dark:text-white font-black text-xl leading-tight mt-0.5 truncate max-w-[160px]">
                             {summary.hotspotSite}
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 relative">
+                <div className="flex items-center gap-4 relative">
                     <div
-                        className="text-2xl font-black px-3 py-1 rounded-xl text-white shadow-sm"
-                        style={{ backgroundColor: summary.color }}
+                        className="text-3xl font-black px-5 py-2 rounded-2xl text-white shadow-2xl transform group-hover:scale-110 transition-transform duration-300"
+                        style={{ 
+                            backgroundColor: summary.color,
+                            boxShadow: `0 10px 30px -10px ${summary.color}80`
+                        }}
                     >
                         {summary.maxAQI}
                     </div>
-                    <div className="text-xs font-medium text-slate-500">
-                        Top Pollutant:<br />
-                        <span className="text-slate-800 font-bold">{summary.parameter}</span>
+                    <div className="flex flex-col">
+                        <span className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-wider">Top Pollutant</span>
+                        <span className="text-slate-900 dark:text-white font-black text-lg">{summary.parameter}</span>
                     </div>
                 </div>
             </div>
 
             {/* Health Recommendation Card */}
-            <div className="bg-[#0b3d91] text-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all group relative overflow-hidden md:col-span-1">
-                <div className="absolute right-0 bottom-0 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                    <Heart size={120} strokeWidth={1} />
+            <div className="premium-sidebar text-white rounded-[2rem] p-8 shadow-2xl hover:shadow-[0_20px_50px_rgba(11,61,145,0.3)] transition-all group relative overflow-hidden border border-white/10">
+                <div className="absolute -right-10 -bottom-10 opacity-10 group-hover:scale-125 group-hover:-rotate-12 transition-all duration-700">
+                    <Heart size={180} strokeWidth={1} />
                 </div>
-                <div className="flex items-center gap-4 mb-3 relative">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                        <ShieldCheck size={20} />
+                <div className="flex items-center gap-5 mb-4 relative">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/10">
+                        <ShieldCheck size={24} className="text-sky-300" />
                     </div>
-                    <h3 className="font-bold text-sm uppercase tracking-wider">Health Recommendation</h3>
+                    <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-sky-200">Health Advisory</h3>
                 </div>
-                <p className="text-white/90 text-sm leading-relaxed font-medium relative italic">
+                <p className="text-white/90 text-sm leading-relaxed font-bold relative italic pr-12">
                     "{getHealthTip(summary.category)}"
                 </p>
-                <div className="mt-4 flex items-center gap-2 text-[10px] text-white/60 font-bold uppercase tracking-widest relative">
-                    <Info size={12} />
+                <div className="mt-6 flex items-center gap-3 text-[9px] text-sky-300/60 font-black uppercase tracking-[0.3em] relative">
+                    <div className="w-8 h-px bg-sky-300/30"></div>
                     Stay Safe, Mississippi
                 </div>
             </div>

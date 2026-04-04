@@ -9,11 +9,26 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const response = await fetch(targetUrl);
+        const parsedUrl = new URL(targetUrl);
+        const whitelist = ['s3-us-west-1.amazonaws.com', 'www.airnowapi.org', 'airnowapi.org', 'arcgis.com'];
+        
+        if (!whitelist.some(domain => parsedUrl.hostname.endsWith(domain))) {
+            return NextResponse.json({ error: 'Unauthorized target domain' }, { status: 403 });
+        }
+
+        // Inject API Key for AirNow API requests if missing
+        if (parsedUrl.hostname.includes('airnowapi.org') && !parsedUrl.searchParams.has('API_KEY')) {
+            const apiKey = process.env.AIRNOW_API_KEY;
+            if (apiKey) {
+                parsedUrl.searchParams.set('API_KEY', apiKey);
+            }
+        }
+
+        const response = await fetch(parsedUrl.toString());
 
         if (!response.ok) {
             return NextResponse.json(
-                { error: 'Failed to fetch from AirNow' },
+                { error: `Failed to fetch from ${parsedUrl.hostname}` },
                 { status: response.status }
             );
         }
@@ -29,6 +44,7 @@ export async function GET(request: NextRequest) {
             }
         });
     } catch (error) {
+        console.error('Proxy Error:', error);
         return NextResponse.json(
             { error: 'Internal Server Error' },
             { status: 500 }

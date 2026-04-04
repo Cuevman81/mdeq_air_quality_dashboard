@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { DataService, AQIDataPoint } from '@/lib/data';
-import { Activity, Clock, TrendingUp, CloudRain, Flame } from 'lucide-react';
+import { Activity, Clock, TrendingUp, CloudRain, Flame, Filter } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 // Dynamically import maps to avoid SSR issues with Leaflet
 const AQIMap = dynamic(() => import('@/components/AQIMap'), { ssr: false, loading: () => <div className="h-[500px] w-full bg-slate-100 animate-pulse flex items-center justify-center rounded-xl border border-slate-200">Loading Interactive Map...</div> });
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statewideSummary, setStatewideSummary] = useState<any>(null);
+  const [legendFilter, setLegendFilter] = useState<string[]>([]);
 
   // Lock default date strictly to Mississippi Local Time (America/Chicago) to avoid evening UTC rollovers into 'tomorrow'
   // Default to Yesterday for historical as Today's daily averages won't exist yet
@@ -107,12 +109,13 @@ export default function Dashboard() {
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans text-slate-800">
 
       {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-gradient-to-b from-[#0b3d91] to-[#1e3a8a] text-white p-6 shadow-xl z-10 flex flex-col">
-        <div className="text-center mb-8">
-          <a href="https://www.mdeq.ms.gov/" target="_blank" rel="noreferrer">
-            <img src="/msdeq_logo.jpeg" alt="MDEQ Logo" className="w-20 rounded-xl mx-auto mb-4 shadow-lg bg-white p-1" />
+      <aside className="w-full md:w-64 premium-sidebar text-white p-6 shadow-xl z-20 flex flex-col">
+        <div className="text-center mb-10">
+          <a href="https://www.mdeq.ms.gov/" target="_blank" rel="noreferrer" className="block transform hover:scale-105 transition-transform duration-300">
+            <img src="/msdeq_logo.jpeg" alt="MDEQ Logo" className="w-20 rounded-2xl mx-auto mb-4 shadow-2xl bg-white p-1.5" />
           </a>
-          <h1 className="font-bold text-lg tracking-tight">MS Air Quality</h1>
+          <h1 className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-sky-200">MS Air Quality</h1>
+          <p className="text-[10px] uppercase tracking-widest text-sky-300/60 font-bold mt-1">Real-time Dashboard</p>
         </div>
 
         <nav className="flex flex-col gap-2 mb-auto overflow-x-auto md:overflow-visible">
@@ -133,10 +136,16 @@ export default function Dashboard() {
           })}
         </nav>
 
-        <div className="mt-8 pt-6 border-t border-white/10 flex flex-col gap-3 text-sm">
-          <p className="text-white/50 font-semibold tracking-wider text-xs uppercase mb-1">Resources</p>
-          <a href="https://www.airnow.gov/" target="_blank" className="text-white/80 hover:text-white hover:underline transition-colors">AirNow.gov</a>
-          <a href="https://fire.airnow.gov/" target="_blank" className="text-white/80 hover:text-white hover:underline transition-colors">Fire & Smoke Map</a>
+        <div className="mt-8 pt-6 border-t border-white/10 flex flex-col gap-4 text-sm">
+          <p className="text-white/40 font-bold tracking-widest text-[10px] uppercase mb-1">External Resources</p>
+          <a href="https://www.airnow.gov/" target="_blank" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors group">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 group-hover:scale-125 transition-transform"></span>
+            AirNow.gov
+          </a>
+          <a href="https://fire.airnow.gov/" target="_blank" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors group">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 group-hover:scale-125 transition-transform"></span>
+            Fire & Smoke Map
+          </a>
         </div>
       </aside>
 
@@ -144,36 +153,77 @@ export default function Dashboard() {
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
 
         {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-[#0b3d91]">Mississippi Ambient Air Quality Dashboard</h2>
-          <div className="bg-white px-5 py-2.5 rounded-full shadow-sm border border-slate-200 text-sm font-medium text-slate-600 flex items-center gap-2">
-            <Clock size={16} className="text-sky-500" suppressHydrationWarning />
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+              Mississippi <span className="text-primary">Ambient Air</span> Quality
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">Live environmental data from the MDEQ Monitoring Network.</p>
+          </div>
+          <div className="flex items-center gap-4 w-full lg:w-auto">
+            <div className="glass px-6 py-3 rounded-2xl text-xs font-black text-slate-500 dark:text-slate-400 flex items-center gap-4 shadow-xl border-slate-200/50 dark:border-slate-800/50 grow lg:grow-0 justify-center group divide-x divide-slate-200 dark:divide-slate-800">
+              <div className="flex items-center gap-3 pr-4">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]"></div>
+                <span className="uppercase tracking-[0.2em] text-primary">Live</span>
+              </div>
+              <div className="flex items-center gap-3 pl-4">
+                <Clock size={16} className="text-slate-400 group-hover:text-primary transition-colors" suppressHydrationWarning />
+                <span className="uppercase tracking-widest tabular-nums">
+                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            </div>
+            <ThemeToggle />
           </div>
         </header>
 
         {/* Legend */}
-        <div className="bg-white/80 backdrop-blur-md border border-white p-4 rounded-2xl shadow-sm mb-6 flex flex-wrap gap-4 items-center justify-between text-xs font-semibold">
-          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#00e400] shadow-inner border border-black/10"></div>Good (0-50)</div>
-          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#ffff00] shadow-inner border border-black/10"></div>Moderate (51-100)</div>
-          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#ff7e00] shadow-inner border border-black/10"></div>USG (101-150)</div>
-          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#ff0000] shadow-inner border border-black/10"></div>Unhealthy (151-200)</div>
-          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#99004c] shadow-inner border border-black/10"></div>Very Unhealthy</div>
-          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#7e0023] shadow-inner border border-black/10"></div>Hazardous</div>
+        <div className="glass p-5 rounded-2xl mb-8 flex flex-wrap gap-6 items-center justify-between text-[11px] font-bold tracking-wide uppercase">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mr-2">
+             <Filter size={14} className="text-primary" />
+             <span>Filter by Status:</span>
+          </div>
+          {[
+            { cat: 'Good', color: '#00e400' },
+            { cat: 'Moderate', color: '#ffff00' },
+            { cat: 'USG', color: '#ff7e00' },
+            { cat: 'Unhealthy', color: '#ff0000' },
+            { cat: 'Very Unhealthy', color: '#99004c' },
+            { cat: 'Hazardous', color: '#7e0023' }
+          ].map(level => {
+            const isExcluded = legendFilter.includes(level.cat);
+            return (
+              <button
+                key={level.cat}
+                onClick={() => setLegendFilter(prev => prev.includes(level.cat) ? prev.filter(c => c !== level.cat) : [...prev, level.cat])}
+                className={`flex items-center gap-2 transition-all duration-300 py-1.5 px-3 rounded-full border ${isExcluded ? 'opacity-30 grayscale' : 'opacity-100 shadow-sm'}`}
+                style={{ borderColor: level.color + '40', backgroundColor: !isExcluded ? level.color + '10' : 'transparent' }}
+              >
+                <div className="w-3 h-3 rounded-full shadow-inner" style={{ backgroundColor: level.color }}></div>
+                <span className={isExcluded ? 'text-slate-400' : 'text-slate-700 dark:text-slate-200'}>{level.cat}</span>
+              </button>
+            )
+          })}
+          <button 
+            onClick={() => setLegendFilter([])}
+            className={`text-[10px] text-primary hover:underline ml-auto ${legendFilter.length === 0 ? 'invisible' : 'visible'}`}
+          >
+            Clear Filters
+          </button>
         </div>
 
         {/* Tab Content */}
         {(activeTab === 'current' || activeTab === 'historical') && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700 ease-out">
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+            <div className="glass p-6 rounded-3xl shadow-lg flex flex-wrap items-center justify-between gap-6 border-slate-200/50 dark:border-slate-800/50">
               <div className="flex items-center gap-6">
-                <div className="flex items-center gap-3">
-                  <label className="font-semibold text-slate-700">Parameter:</label>
+                <div className="flex items-center gap-4">
+                  <label className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 whitespace-nowrap">Pollutant:</label>
                   <select
                     value={param}
                     onChange={(e) => setParam(e.target.value)}
-                    className="bg-slate-50 border border-slate-300 text-slate-900 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 font-medium min-w-[120px]"
+                    className="bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary font-bold text-sm min-w-[140px] transition-all cursor-pointer"
                     disabled={!data || data.parameters.length === 0}
                   >
                     {data?.parameters.map(p => <option key={p} value={p}>{p}</option>)}
@@ -181,14 +231,14 @@ export default function Dashboard() {
                 </div>
 
                 {activeTab === 'historical' && (
-                  <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
-                    <label className="font-semibold text-slate-700">Select Date:</label>
+                  <div className="flex items-center gap-4 border-l border-slate-200 dark:border-slate-800 pl-6">
+                    <label className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 whitespace-nowrap">Reference Date:</label>
                     <input
                       type="date"
                       value={historicalDate}
-                      max={new Date().toISOString().split('T')[0]} // Cannot pick future
+                      max={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setHistoricalDate(e.target.value)}
-                      className="bg-slate-50 border border-slate-300 text-slate-900 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 font-medium"
+                      className="bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary font-bold text-sm transition-all"
                     />
                   </div>
                 )}
@@ -210,8 +260,8 @@ export default function Dashboard() {
             </div>}
 
             {!loading && !error && (!data || !param) && (
-              <div className="text-center p-12 bg-white rounded-2xl shadow-sm border border-slate-200">
-                <p className="text-slate-500 font-medium">No Air Quality Data available for this selection.</p>
+              <div className="text-center p-16 glass rounded-3xl border-slate-200 dark:border-slate-800">
+                <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">No data available for this selection.</p>
               </div>
             )}
 
@@ -219,49 +269,57 @@ export default function Dashboard() {
               <>
                 {activeTab === 'current' && <SummaryCards summary={statewideSummary} />}
 
-                <AQIMap data={data.parameterData[param] || []} parameter={param} />
+                <AQIMap 
+                  data={(data.parameterData[param] || []).filter(p => !legendFilter.includes(DataService.getAQIInfo(param, p.value)?.category || ''))} 
+                  parameter={param} 
+                />
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                    <h3 className="font-bold text-lg text-slate-800">
-                      {activeTab === 'current' ? 'Current Readings' : 'Historical Readings'} ({param})
+                <div className="glass rounded-3xl shadow-xl overflow-hidden border-slate-200 dark:border-slate-800">
+                  <div className="px-8 py-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center">
+                    <h3 className="font-extrabold text-xl text-slate-800 dark:text-white">
+                      {activeTab === 'current' ? 'Live Network Readings' : 'Daily NAAQS Compliance'} ({param})
                     </h3>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-[#f8fafc] text-slate-500 font-semibold uppercase text-xs tracking-wider border-b border-slate-200">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead className="bg-slate-50/50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em] border-b border-slate-200/50 dark:border-slate-800/50">
                         <tr>
-                          <th className="px-6 py-4">Site Location</th>
-                          <th className="px-6 py-4">Observation Time</th>
-                          <th className="px-6 py-4">Observed Value</th>
-                          <th className="px-6 py-4">Units</th>
-                          <th className="px-6 py-4">AQI Status</th>
+                          <th className="px-8 py-5">Monitoring Site</th>
+                          <th className="px-8 py-5">Observation</th>
+                          <th className="px-8 py-5 text-right">Value</th>
+                          <th className="px-3 py-5">Units</th>
+                          <th className="px-8 py-5">AQI Descriptor</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {(data.parameterData[param] || []).map((row, i) => {
-                          const aqiInfo = DataService.getAQIInfo(param, row.value);
-                          return (
-                            <tr key={i} className="hover:bg-sky-50/30 transition-colors">
-                              <td className="px-6 py-4 font-semibold text-slate-700">{row.siteName}</td>
-                              <td className="px-6 py-4 text-slate-500 font-medium">{row.time || '--'}</td>
-                              <td className="px-6 py-4 text-lg font-bold text-slate-900">{row.value}</td>
-                              <td className="px-6 py-4 text-slate-400 font-medium">{row.units}</td>
-                              <td className="px-6 py-4">
-                                <span
-                                  className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold leading-none border shadow-sm"
-                                  style={{
-                                    backgroundColor: `${aqiInfo?.color}15`,
-                                    color: aqiInfo?.color === '#ffff00' ? '#9a4700' : aqiInfo?.color,
-                                    borderColor: `${aqiInfo?.color}40`
-                                  }}
-                                >
-                                  <span className="w-2.5 h-2.5 rounded-full mr-2 shadow-inner" style={{ backgroundColor: aqiInfo?.color }}></span>
-                                  {aqiInfo?.category}
-                                </span>
-                              </td>
-                            </tr>
-                          )
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {(data.parameterData[param] || [])
+                          .filter(row => {
+                            const aqiInfo = DataService.getAQIInfo(param, row.value);
+                            return !legendFilter.includes(aqiInfo?.category || '');
+                          })
+                          .map((row, i) => {
+                            const aqiInfo = DataService.getAQIInfo(param, row.value);
+                            return (
+                              <tr key={i} className="group hover:bg-primary/5 transition-colors duration-200">
+                                <td className="px-8 py-5 font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">{row.siteName}</td>
+                                <td className="px-8 py-5 text-slate-500 dark:text-slate-400 font-medium">{row.time || '--'}</td>
+                                <td className="px-8 py-5 text-xl font-black text-slate-900 dark:text-white text-right tabular-nums">{row.value}</td>
+                                <td className="px-3 py-5 text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">{row.units}</td>
+                                <td className="px-8 py-5">
+                                  <span
+                                    className="inline-flex items-center px-4 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase border shadow-sm transition-transform group-hover:scale-105"
+                                    style={{
+                                      backgroundColor: `${aqiInfo?.color}15`,
+                                      color: aqiInfo?.color === '#ffff00' ? '#9a4700' : aqiInfo?.color,
+                                      borderColor: `${aqiInfo?.color}30`
+                                    }}
+                                  >
+                                    <span className="w-2.5 h-2.5 rounded-full mr-2.5 shadow-lg border border-white/20" style={{ backgroundColor: aqiInfo?.color }}></span>
+                                    {aqiInfo?.category}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
                         })}
                       </tbody>
                     </table>

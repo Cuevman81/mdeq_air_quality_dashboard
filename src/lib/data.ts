@@ -440,15 +440,15 @@ export class DataService {
     }
 
     static async fetchForecastData(zipCode: string): Promise<any> {
-        const apiKey = 'F20E6AAA-D56F-E511-A968DF4E5E4316FD'; // Legacy key from original app
         const currentDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); // YYYY-MM-DD
 
-        // We proxy this through our Next.js API route to avoid CORS just like the other fetches
-        const apiUrl = `https://www.airnowapi.org/aq/forecast/zipCode/?format=application/json&zipCode=${zipCode}&date=${currentDate}&distance=25&API_KEY=${apiKey}`;
+        // We proxy this through our Next.js API route to avoid CORS.
+        // The API Key is now injected server-side by the proxy for security.
+        const apiUrl = `https://www.airnowapi.org/aq/forecast/zipCode/?format=application/json&zipCode=${zipCode}&date=${currentDate}&distance=25`;
         const proxyUrl = `/api/proxy?url=${encodeURIComponent(apiUrl)}`;
 
         try {
-            console.log(`Fetching forecast proxy: ${proxyUrl}`);
+            console.log(`Fetching forecast proxy (Secure): ${proxyUrl}`);
             const response = await fetch(proxyUrl);
 
             if (response.ok) {

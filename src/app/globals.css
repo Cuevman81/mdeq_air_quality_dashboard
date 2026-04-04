@@ -1,26 +1,92 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: oklch(var(--primary));
+  --color-primary-foreground: oklch(var(--primary-foreground));
+  
+  --color-background: oklch(var(--background));
+  --color-foreground: oklch(var(--foreground));
+  
+  --color-card: oklch(var(--card));
+  --color-card-foreground: oklch(var(--card-foreground));
+  
+  --color-accent: oklch(var(--accent));
+  --color-accent-foreground: oklch(var(--accent-foreground));
+  
+  --color-border: oklch(var(--border));
+  --color-input: oklch(var(--input));
+  --color-ring: oklch(var(--ring));
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: 98% 0.01 240;
+  --foreground: 20% 0.05 240;
+  
+  --card: 100% 0 0;
+  --card-foreground: 20% 0.05 240;
+  
+  --primary: 45% 0.18 250;
+  --primary-foreground: 98% 0.01 240;
+  
+  --accent: 60% 0.15 200;
+  --accent-foreground: 20% 0.05 240;
+  
+  --border: 90% 0.02 240;
+  --input: 90% 0.02 240;
+  --ring: 45% 0.18 250;
+  
+  --radius: 1rem;
+}
+
+.dark {
+  --background: 12% 0.03 240;
+  --foreground: 95% 0.01 240;
+  
+  --card: 15% 0.03 240;
+  --card-foreground: 95% 0.01 240;
+  
+  --primary: 60% 0.18 220;
+  --primary-foreground: 12% 0.03 240;
+  
+  --accent: 30% 0.1 240;
+  --accent-foreground: 95% 0.01 240;
+  
+  --border: 25% 0.03 240;
+  --input: 25% 0.03 240;
+  --ring: 60% 0.18 220;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground transition-colors duration-300;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .glass {
+    @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-800/20 shadow-xl;
+  }
+  
+  .glass-card {
+    @apply bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm border border-white/20 dark:border-slate-800/20 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .premium-sidebar {
+    @apply bg-gradient-to-b from-[#0b3d91] to-[#1e3a8a] dark:from-[#020617] dark:to-[#0f172a] shadow-2xl;
+  }
+}
+
+/* Custom scrollbar for a cleaner look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 dark:bg-slate-800 rounded-full hover:bg-slate-300 dark:hover:bg-slate-700;
 }
