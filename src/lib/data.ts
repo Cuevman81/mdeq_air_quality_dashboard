@@ -44,7 +44,7 @@ export interface AQIDataPoint {
 }
 
 export class DataService {
-    static cachedAnchorOffset: number | null = null;
+    // We no longer use a static cache for the anchor to ensure we always try for the freshest data first
 
     static getAQIInfo(parameter: string, value: number) {
         // Strip out the custom aggregation suffixes to map to the core configuration metric (e.g. OZONE-8HR MAX -> OZONE)
@@ -62,22 +62,17 @@ export class DataService {
         return thresholds.find((t: any) => value <= t.max);
     }
 
-    static getHourlyDataUrl(dateStr?: string, fallbackOffset = 0) {
-        let isToday = false;
+    static getHourlyDataUrl(dateStr?: string, absoluteOffset = 0) {
         let s3Url = '';
-
         const now = new Date();
         const localTodayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const utcTodayStr = now.toISOString().split('T')[0];
 
         // If no date provided, or it matches local today OR UTC today, treat as current fetching logic
         if (!dateStr || dateStr === localTodayStr || dateStr === utcTodayStr) {
-            isToday = true;
             const targetDate = new Date();
-
-            // Use cached offset if available to skip the search loop
-            const offsetToUse = this.cachedAnchorOffset !== null ? this.cachedAnchorOffset : fallbackOffset;
-            targetDate.setUTCHours(targetDate.getUTCHours() - offsetToUse);
+            // absoluteOffset is the number of hours to go back from NOW
+            targetDate.setUTCHours(targetDate.getUTCHours() - absoluteOffset);
 
             const year = targetDate.getUTCFullYear();
             const month = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
@@ -87,11 +82,10 @@ export class DataService {
             s3Url = `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/today/HourlyData_${year}${month}${day}${hour}.dat`;
         } else {
             const [y, m, d] = dateStr.split('-');
-            const hour = String(23 - fallbackOffset).padStart(2, '0'); // Pull from ~5PM Local Time with fallback offset
+            const hour = String(23 - absoluteOffset).padStart(2, '0'); 
             s3Url = `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/${y}/${y}${m}${d}/HourlyData_${y}${m}${d}${hour}.dat`;
         }
 
-        // Use our Next.js API route to proxy the request and avoid CORS
         return `/api/proxy?url=${encodeURIComponent(s3Url)}`;
     }
 
@@ -226,67 +220,69 @@ export class DataService {
         };
     }
 
-    static async fetchAirQualityData(dateStr: string | null = null, fallbackTries = 8): Promise<any> {
-        const fallbackOffset = 8 - fallbackTries;
-        const url = this.getHourlyDataUrl(dateStr || undefined, fallbackOffset);
+    static async fetchAirQualityData(dateStr: string | null = null, absoluteOffset = 0): Promise<any> {
+        // Limit search to 6 hours to avoid infinite loops during outages
+        if (absoluteOffset > 6) {
+            throw new Error(`AirNow search exhausted. No network data found for the last 6 hours.`);
+        }
+
+        const url = this.getHourlyDataUrl(dateStr || undefined, absoluteOffset);
 
         try {
-            console.log(`Fetching proxy: ${url} (Tries left: ${fallbackTries})`);
+            console.log(`SmartHour Fetch: ${url} (Offset: ${absoluteOffset})`);
             const response = await fetch(url);
 
             if (response.ok) {
                 const text = await response.text();
                 const parsed = this.parseDatFile(text);
 
-                // If file exists but has no MS data (happens at top of hour), continue search backwards
-                if (parsed.allData.length === 0 && fallbackTries > 0) {
-                    console.log(`File found but empty at offset ${fallbackOffset}. Searching older...`);
-                    return this.fetchAirQualityData(dateStr, fallbackTries - 1);
-                }
-
-                // Store the successful offset for subsequent "instant" fetches
-                if (this.cachedAnchorOffset === null && !dateStr && parsed.allData.length > 0) {
-                    this.cachedAnchorOffset = fallbackOffset;
+                // Case: File exists but MDEQ data hasn't been appended yet (Top of Hour)
+                if (parsed.allData.length === 0) {
+                    console.log(`Hour ${absoluteOffset} file found but empty. Rolling back...`);
+                    return this.fetchAirQualityData(dateStr, absoluteOffset + 1);
                 }
 
                 return parsed;
             }
 
-            if (fallbackTries > 0) {
-                console.log(`Fallback ${fallbackTries}: Trying older data (offset ${fallbackOffset + 1})...`);
-                return this.fetchAirQualityData(dateStr, fallbackTries - 1);
+            // Case: File doesn't exist yet (404)
+            if (response.status === 404) {
+                console.log(`Hour ${absoluteOffset} not published yet. Trying previous hour...`);
+                return this.fetchAirQualityData(dateStr, absoluteOffset + 1);
             }
 
-            throw new Error(`Failed to fetch data from AirNow S3 (404 Not Found on all recent tries). URL: ${url}`);
-        } catch (error) {
-            console.error("Data Fetch Error:", error);
-            throw error;
+            throw new Error(`Unexpected server response: ${response.status}`);
+        } catch (error: any) {
+            if (error.message.includes('exhausted')) throw error;
+            console.warn(`Network error at offset ${absoluteOffset}, searching back...`, error);
+            return this.fetchAirQualityData(dateStr, absoluteOffset + 1);
         }
     }
 
     static async fetchTrailingHourlyData(siteName: string, parameter: string, hoursBack: number = 12): Promise<{ time: string, value: number }[]> {
         console.log(`Fetching trailing ${hoursBack} hours for ${siteName} - ${parameter}`);
 
-        // Use cached anchor if available, otherwise find it once
+        // Find the most recent available "anchor" hour by searching back up to 6 hours
         let anchorDate = new Date();
-        if (this.cachedAnchorOffset !== null) {
-            anchorDate.setUTCHours(anchorDate.getUTCHours() - this.cachedAnchorOffset);
-        } else {
-            let foundAnchor = false;
-            for (let offset = 0; offset <= 5; offset++) {
-                const testUrl = this.getHourlyDataUrl(undefined, offset);
-                try {
-                    const res = await fetch(testUrl);
-                    if (res.ok) {
-                        this.cachedAnchorOffset = offset;
+        let foundAnchor = false;
+        
+        for (let offset = 0; offset <= 6; offset++) {
+            const testUrl = this.getHourlyDataUrl(undefined, offset);
+            try {
+                const res = await fetch(testUrl);
+                if (res.ok) {
+                    const text = await res.text();
+                    const parsed = this.parseDatFile(text);
+                    if (parsed.allData.length > 0) {
                         anchorDate.setUTCHours(anchorDate.getUTCHours() - offset);
                         foundAnchor = true;
                         break;
                     }
-                } catch (e) { }
-            }
-            if (!foundAnchor) return [];
+                }
+            } catch (e) { }
         }
+
+        if (!foundAnchor) return [];
 
         // Generate URLs for the trailing X hours
         const urlsToFetch = [];
