@@ -47,15 +47,15 @@ export default function ForecastView() {
         fetchAllForecasts();
     }, []);
 
-    const getCategoryStyles = (categoryName: string) => {
+    const getCategoryColor = (categoryName: string) => {
         const cat = categoryName.toLowerCase();
-        if (cat === 'good') return 'bg-[#00e400] text-slate-800';
-        if (cat === 'moderate') return 'bg-[#ffff00] text-slate-800';
-        if (cat === 'unhealthy for sensitive groups') return 'bg-[#ff7e00] text-white';
-        if (cat === 'unhealthy') return 'bg-[#ff0000] text-white';
-        if (cat === 'very unhealthy') return 'bg-[#99004c] text-white';
-        if (cat === 'hazardous') return 'bg-[#7e0023] text-white';
-        return 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200';
+        if (cat === 'good') return '#00e400';
+        if (cat === 'moderate') return '#ffde33'; // slightly warmer moderate yellow
+        if (cat === 'unhealthy for sensitive groups') return '#ff7e00';
+        if (cat === 'unhealthy') return '#ff0000';
+        if (cat === 'very unhealthy') return '#99004c';
+        if (cat === 'hazardous') return '#7e0023';
+        return '#cbd5e1';
     };
 
     return (
@@ -136,43 +136,47 @@ export default function ForecastView() {
 
                                 {filteredForecasts.map((forecast: any, index: number) => {
                                     const categoryName = forecast.Category?.Name || 'Unknown';
-                                    const styleClass = getCategoryStyles(categoryName);
+                                    const color = getCategoryColor(categoryName);
 
                                     const [year, month, day] = forecast.DateForecast.split('-').map(Number);
                                     const dateObj = new Date(year, month - 1, day);
                                     const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
                                     return (
-                                        <div key={index} className={`rounded-[2rem] shadow-xl p-8 flex flex-col border border-white/20 dark:border-slate-800/20 transition-all duration-300 hover:scale-[1.03] group ${styleClass}`}>
-                                            <div className="flex justify-between items-start mb-6 border-b border-black/10 pb-4">
+                                        <div 
+                                            key={index} 
+                                            className="glass-card p-8 flex flex-col border border-white/20 dark:border-slate-800/20 transition-all duration-300 hover:scale-[1.03] group"
+                                            style={{ borderLeft: `6px solid ${color}` }}
+                                        >
+                                            <div className="flex justify-between items-start mb-6 border-b border-slate-200/50 dark:border-slate-800/50 pb-4">
                                                 <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Mississippi Forecast</p>
-                                                    <p className="text-xl font-black">{formattedDate}</p>
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Mississippi Forecast</p>
+                                                    <p className="text-xl font-black text-slate-900 dark:text-white">{formattedDate}</p>
                                                 </div>
                                                 {forecast.AQI !== -1 && (
                                                     <div className="text-right">
-                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">AQI Index</p>
-                                                        <p className="text-3xl font-black tabular-nums">{forecast.AQI}</p>
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">AQI Index</p>
+                                                        <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{forecast.AQI}</p>
                                                     </div>
                                                 )}
                                             </div>
 
                                             <div className="space-y-4 flex-grow">
                                                 <div className="flex items-center gap-3">
-                                                    <span className="w-3 h-3 rounded-full bg-white border border-black/10"></span>
-                                                    <p className="text-lg font-black uppercase tracking-tight">{categoryName}</p>
+                                                    <span className="w-3.5 h-3.5 rounded-full shadow-md" style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}` }}></span>
+                                                    <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white">{categoryName}</p>
                                                 </div>
 
                                                 {AQI_CATEGORY_INFO[categoryName] && (
-                                                    <p className="text-sm font-bold leading-relaxed opacity-90 italic">
+                                                    <p className="text-sm font-semibold leading-relaxed text-slate-600 dark:text-slate-350 italic">
                                                         "{AQI_CATEGORY_INFO[categoryName]}"
                                                     </p>
                                                 )}
 
                                                 {forecast.Discussion && (
-                                                    <div className="pt-5 mt-5 border-t border-black/10">
-                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">Technical Summary</p>
-                                                        <p className="text-xs font-bold leading-relaxed">{forecast.Discussion}</p>
+                                                    <div className="pt-5 mt-5 border-t border-slate-200/50 dark:border-slate-800/50">
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-2">Technical Summary</p>
+                                                        <p className="text-xs font-semibold leading-relaxed text-slate-500 dark:text-slate-400">{forecast.Discussion}</p>
                                                     </div>
                                                 )}
                                             </div>

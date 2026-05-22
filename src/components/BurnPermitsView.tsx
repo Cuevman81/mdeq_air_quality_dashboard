@@ -22,6 +22,20 @@ export default function BurnPermitsView() {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isDark, setIsDark] = useState(false);
+
+    useEffect(() => {
+        const checkTheme = () => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        };
+        checkTheme();
+        const observer = new MutationObserver(checkTheme);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class'],
+        });
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         const fetchPermits = async () => {
@@ -174,19 +188,20 @@ export default function BurnPermitsView() {
                 <div className="h-[650px] w-full relative z-0">
                     <MapContainer center={[32.7, -89.6]} zoom={7.2} scrollWheelZoom={false} className="h-full w-full">
                         <TileLayer
-                            attribution='&copy; OpenStreetMap | Data: Mississippi Forestry Commission'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            key={isDark ? 'dark' : 'light'}
+                            attribution={isDark ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | MFC' : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | MFC'}
+                            url={isDark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"}
                         />
                         {permits.map((permit) => (
                             <Marker key={permit.id} position={[permit.latitude, permit.longitude]} icon={createFireIcon(permit.type)}>
                                 <Popup className="premium-popup">
                                     <div className="p-3 min-w-[240px]">
-                                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
                                             <div className="flex items-center gap-2">
                                                 <Flame className="w-5 h-5 text-orange-600" />
-                                                <h4 className="font-black text-lg m-0 text-slate-900 uppercase tracking-tight">{permit.county}</h4>
+                                                <h4 className="font-black text-lg m-0 text-slate-900 dark:text-slate-100 uppercase tracking-tight">{permit.county}</h4>
                                             </div>
-                                            <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${permit.dayNight === 'Day' ? 'bg-sky-100 text-sky-700' : 'bg-slate-900 text-white'}`}>
+                                            <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${permit.dayNight === 'Day' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300' : 'bg-slate-900 text-white dark:bg-slate-800 dark:text-slate-200'}`}>
                                                 {permit.dayNight}
                                             </div>
                                         </div>
@@ -194,15 +209,15 @@ export default function BurnPermitsView() {
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Burn Area:</span>
-                                                <span className="font-black text-lg text-slate-900 tabular-nums">{permit.acres} <span className="text-[10px] uppercase">Acres</span></span>
+                                                <span className="font-black text-lg text-slate-900 dark:text-white tabular-nums">{permit.acres} <span className="text-[10px] uppercase">Acres</span></span>
                                             </div>
                                             <div>
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Permit Class:</span>
-                                                <span className="font-bold text-sm text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg block">{permit.type}</span>
+                                                <span className="font-bold text-sm text-slate-700 dark:text-slate-350 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-lg block">{permit.type}</span>
                                             </div>
                                             <div>
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Declared Purpose:</span>
-                                                <p className="text-xs font-bold text-slate-600 italic leading-relaxed">"{permit.purpose}"</p>
+                                                <p className="text-xs font-bold text-slate-600 dark:text-slate-450 italic leading-relaxed">"{permit.purpose}"</p>
                                             </div>
                                         </div>
                                     </div>

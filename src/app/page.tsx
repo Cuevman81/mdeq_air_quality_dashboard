@@ -106,7 +106,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans text-slate-800">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300">
 
       {/* Sidebar */}
       <aside className="w-full md:w-64 premium-sidebar text-white p-6 shadow-xl z-20 flex flex-col">
@@ -173,7 +173,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-4 w-full lg:w-auto">
             <div className="glass px-6 py-3 rounded-2xl text-xs font-black text-slate-500 dark:text-slate-400 flex items-center gap-4 shadow-xl border-slate-200/50 dark:border-slate-800/50 grow lg:grow-0 justify-center group divide-x divide-slate-200 dark:divide-slate-800">
               <div className="flex items-center gap-3 pr-4">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]"></div>
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_oklch(var(--primary)/0.5)]"></div>
                 <span className="uppercase tracking-[0.2em] text-primary">Live</span>
               </div>
               <div className="flex items-center gap-3 pl-4">
@@ -262,10 +262,10 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {loading && <div className="text-center p-12 bg-white rounded-2xl shadow-sm border border-slate-200"><div className="animate-spin w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full mx-auto mb-4"></div><p className="text-slate-500 font-medium tracking-wide">Fetching Air Quality Data...</p></div>}
+            {loading && <div className="text-center p-12 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm"><div className="animate-spin w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full mx-auto mb-4"></div><p className="text-slate-500 dark:text-slate-400 font-medium tracking-wide">Fetching Air Quality Data...</p></div>}
 
-            {error && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-6 rounded-r-lg font-medium shadow-sm flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-500">!</div>
+            {error && <div className="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-6 rounded-r-lg font-medium shadow-sm flex items-center gap-4 border border-red-200/50 dark:border-red-900/50">
+              <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0 text-red-500 dark:text-red-400 font-bold">!</div>
               {error}
             </div>}
 
@@ -347,14 +347,14 @@ export default function Dashboard() {
 
         {/* Trends Tab */}
         {activeTab === 'trends' && (
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 mt-8">
-            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
-              <div className="w-16 h-16 bg-sky-50 text-sky-500 rounded-full flex items-center justify-center shadow-inner">
+          <div className="glass p-8 rounded-3xl animate-in fade-in slide-in-from-bottom-4 mt-8">
+            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100 dark:border-slate-800/60">
+              <div className="w-16 h-16 bg-sky-50 dark:bg-sky-950/30 text-sky-500 rounded-full flex items-center justify-center shadow-inner">
                 <TrendingUp size={28} />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-slate-800">Historical Trends</h3>
-                <p className="text-slate-500">10-Day regional lookback using AirNow datasets.</p>
+                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white">Historical Trends</h3>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">10-Day regional lookback using AirNow datasets.</p>
               </div>
             </div>
             <TrendsChart />
@@ -363,14 +363,14 @@ export default function Dashboard() {
 
         {/* Forecast Tab */}
         {activeTab === 'forecast' && (
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 mt-8">
-            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
-              <div className="w-16 h-16 bg-sky-50 text-sky-500 rounded-full flex items-center justify-center shadow-inner">
+          <div className="glass p-8 rounded-3xl animate-in fade-in slide-in-from-bottom-4 mt-8">
+            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100 dark:border-slate-800/60">
+              <div className="w-16 h-16 bg-sky-50 dark:bg-sky-950/30 text-sky-500 rounded-full flex items-center justify-center shadow-inner">
                 <CloudRain size={28} />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-slate-800">Air Quality Forecast</h3>
-                <p className="text-slate-500">Live 24-hour pollutant projections from AirNow.</p>
+                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white">Air Quality Forecast</h3>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">Live 24-hour pollutant projections from AirNow.</p>
               </div>
             </div>
             <ForecastView />

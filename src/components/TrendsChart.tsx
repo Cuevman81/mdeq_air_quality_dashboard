@@ -39,6 +39,20 @@ export default function TrendsChart() {
     const [trendData, setTrendData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isDark, setIsDark] = useState(false);
+
+    useEffect(() => {
+        const checkTheme = () => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        };
+        checkTheme();
+        const observer = new MutationObserver(checkTheme);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class'],
+        });
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         if (!selectedArea) {
@@ -111,7 +125,7 @@ export default function TrendsChart() {
                     <div className="flex items-center gap-4 justify-center mb-8">
                         <div className="h-px grow bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-800"></div>
                         <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-6 py-2 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]"></div>
+                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_oklch(var(--primary)/0.5)]"></div>
                             <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-[0.2em]">10-Day Historical Trend: {selectedArea}</h3>
                         </div>
                         <div className="h-px grow bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800"></div>
@@ -144,12 +158,12 @@ export default function TrendsChart() {
                                     display: true,
                                     text: `${param} Concentrations`,
                                     font: { size: 14, weight: '900' as any, family: 'Inter' },
-                                    color: 'gray',
+                                    color: isDark ? '#e2e8f0' : '#475569',
                                     padding: { bottom: 20 },
                                     align: 'start' as any
                                 },
                                 tooltip: {
-                                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.9)',
                                     titleFont: { size: 12, weight: 'bold' as any },
                                     bodyFont: { size: 12 },
                                     padding: 12,
@@ -162,17 +176,17 @@ export default function TrendsChart() {
                                     grid: { display: false },
                                     ticks: { 
                                         font: { size: 10, weight: 'bold' as any },
-                                        color: 'gray'
+                                        color: isDark ? '#94a3b8' : '#64748b'
                                     }
                                 },
                                 y: {
                                     grid: { 
-                                        color: 'rgba(156, 163, 175, 0.1)',
+                                        color: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(156, 163, 175, 0.1)',
                                         drawBorder: false
                                     },
                                     ticks: {
                                         font: { size: 10, weight: 'bold' as any },
-                                        color: 'gray'
+                                        color: isDark ? '#94a3b8' : '#64748b'
                                     }
                                 }
                             }
