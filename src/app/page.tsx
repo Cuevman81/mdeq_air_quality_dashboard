@@ -194,12 +194,12 @@ export default function Dashboard() {
              <span>Filter by Status:</span>
           </div>
           {[
-            { cat: 'Good', color: '#00e400' },
-            { cat: 'Moderate', color: '#ffff00' },
-            { cat: 'USG', color: '#ff7e00' },
-            { cat: 'Unhealthy', color: '#ff0000' },
-            { cat: 'Very Unhealthy', color: '#99004c' },
-            { cat: 'Hazardous', color: '#7e0023' }
+            { cat: 'Good', label: 'Good', color: '#00e400' },
+            { cat: 'Moderate', label: 'Moderate', color: '#ffff00' },
+            { cat: 'Unhealthy for Sensitive Groups', label: 'USG', color: '#ff7e00' },
+            { cat: 'Unhealthy', label: 'Unhealthy', color: '#ff0000' },
+            { cat: 'Very Unhealthy', label: 'Very Unhealthy', color: '#99004c' },
+            { cat: 'Hazardous', label: 'Hazardous', color: '#7e0023' }
           ].map(level => {
             const isExcluded = legendFilter.includes(level.cat);
             return (
@@ -210,7 +210,7 @@ export default function Dashboard() {
                 style={{ borderColor: level.color + '40', backgroundColor: !isExcluded ? level.color + '10' : 'transparent' }}
               >
                 <div className="w-3 h-3 rounded-full shadow-inner" style={{ backgroundColor: level.color }}></div>
-                <span className={isExcluded ? 'text-slate-400' : 'text-slate-700 dark:text-slate-200'}>{level.cat}</span>
+                <span className={isExcluded ? 'text-slate-400' : 'text-slate-700 dark:text-slate-200'}>{level.label}</span>
               </button>
             )
           })}
@@ -296,7 +296,8 @@ export default function Dashboard() {
                         <tr>
                           <th className="px-8 py-5">Monitoring Site</th>
                           <th className="px-8 py-5">Observation</th>
-                          <th className="px-8 py-5 text-right">Value</th>
+                          <th className="px-8 py-5 text-right">AQI</th>
+                          <th className="px-8 py-5 text-right">Concentration</th>
                           <th className="px-3 py-5">Units</th>
                           <th className="px-8 py-5">AQI Descriptor</th>
                         </tr>
@@ -313,7 +314,8 @@ export default function Dashboard() {
                               <tr key={i} className="group hover:bg-primary/5 transition-colors duration-200">
                                 <td className="px-8 py-5 font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">{row.siteName}</td>
                                 <td className="px-8 py-5 text-slate-500 dark:text-slate-400 font-medium">{row.time || '--'}</td>
-                                <td className="px-8 py-5 text-xl font-black text-slate-900 dark:text-white text-right tabular-nums">{row.value}</td>
+                                <td className="px-8 py-5 text-xl font-black text-slate-900 dark:text-white text-right tabular-nums">{row.aqi}</td>
+                                <td className="px-8 py-5 text-base font-bold text-slate-500 dark:text-slate-400 text-right tabular-nums">{row.value}</td>
                                 <td className="px-3 py-5 text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">{row.units}</td>
                                 <td className="px-8 py-5">
                                   <span

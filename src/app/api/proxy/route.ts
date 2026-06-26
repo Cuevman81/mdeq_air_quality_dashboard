@@ -12,12 +12,17 @@ export async function GET(request: NextRequest) {
         const parsedUrl = new URL(targetUrl);
         const whitelist = ['s3-us-west-1.amazonaws.com', 'www.airnowapi.org', 'airnowapi.org', 'arcgis.com'];
         
-        if (!whitelist.some(domain => parsedUrl.hostname.endsWith(domain))) {
+        const isWhitelisted = whitelist.some(domain => 
+            parsedUrl.hostname === domain || parsedUrl.hostname.endsWith('.' + domain)
+        );
+        
+        if (!isWhitelisted) {
             return NextResponse.json({ error: 'Unauthorized target domain' }, { status: 403 });
         }
 
         // Inject API Key for AirNow API requests if missing
-        if (parsedUrl.hostname.includes('airnowapi.org') && !parsedUrl.searchParams.has('API_KEY')) {
+        const isAirNow = parsedUrl.hostname === 'airnowapi.org' || parsedUrl.hostname.endsWith('.airnowapi.org');
+        if (isAirNow && !parsedUrl.searchParams.has('API_KEY')) {
             const apiKey = process.env.AIRNOW_API_KEY;
             if (apiKey) {
                 parsedUrl.searchParams.set('API_KEY', apiKey);

@@ -54,18 +54,15 @@ export default function TrendsChart() {
         return () => observer.disconnect();
     }, []);
 
-    useEffect(() => {
-        if (!selectedArea) {
-            setTrendData([]);
-            return;
-        }
+    const [allTrendData, setAllTrendData] = useState<any[]>([]);
 
-        const fetchTrends = async () => {
+    useEffect(() => {
+        const fetchAllTrends = async () => {
             setLoading(true);
             setError('');
             try {
                 const data = await DataService.fetchTrendData();
-                setTrendData(data.filter((d: any) => d.area === selectedArea));
+                setAllTrendData(data);
             } catch (err: any) {
                 setError('Failed to load historical trend data from AirNow.');
                 console.error(err);
@@ -73,9 +70,16 @@ export default function TrendsChart() {
                 setLoading(false);
             }
         };
+        fetchAllTrends();
+    }, []);
 
-        fetchTrends();
-    }, [selectedArea]);
+    useEffect(() => {
+        if (!selectedArea) {
+            setTrendData([]);
+            return;
+        }
+        setTrendData(allTrendData.filter((d: any) => d.area === selectedArea));
+    }, [selectedArea, allTrendData]);
 
     // Group data by parameter for multiple charts
     const parameters = Array.from(new Set(trendData.map(d => d.parameter))).sort();

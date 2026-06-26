@@ -46,6 +46,48 @@ export interface AQIDataPoint {
 export class DataService {
     // We no longer use a static cache for the anchor to ensure we always try for the freshest data first
 
+    static calculateAQI(parameter: string, value: number): number {
+        const cleanParam = parameter.split('-')[0].toUpperCase();
+        
+        let breakpoints: { cLow: number, cHigh: number, iLow: number, iHigh: number }[] = [];
+        
+        if (cleanParam === 'PM2.5' || cleanParam === 'PM25') {
+            breakpoints = [
+                { cLow: 0.0, cHigh: 9.0, iLow: 0, iHigh: 50 },
+                { cLow: 9.1, cHigh: 35.4, iLow: 51, iHigh: 100 },
+                { cLow: 35.5, cHigh: 55.4, iLow: 101, iHigh: 150 },
+                { cLow: 55.5, cHigh: 150.4, iLow: 151, iHigh: 200 },
+                { cLow: 150.5, cHigh: 250.4, iLow: 201, iHigh: 300 },
+                { cLow: 250.5, cHigh: 350.4, iLow: 301, iHigh: 400 },
+                { cLow: 350.5, cHigh: 500.4, iLow: 401, iHigh: 500 }
+            ];
+        } else if (cleanParam === 'OZONE' || cleanParam === 'O3') {
+            breakpoints = [
+                { cLow: 0, cHigh: 54, iLow: 0, iHigh: 50 },
+                { cLow: 55, cHigh: 70, iLow: 51, iHigh: 100 },
+                { cLow: 71, cHigh: 85, iLow: 101, iHigh: 150 },
+                { cLow: 86, cHigh: 105, iLow: 151, iHigh: 200 },
+                { cLow: 106, cHigh: 200, iLow: 201, iHigh: 300 },
+                { cLow: 201, cHigh: 600, iLow: 301, iHigh: 500 }
+            ];
+        } else {
+            return Math.round(value);
+        }
+        
+        const range = breakpoints.find(b => value >= b.cLow && value <= b.cHigh);
+        if (!range) {
+            if (value < 0) return 0;
+            const maxRange = breakpoints[breakpoints.length - 1];
+            if (value > maxRange.cHigh) {
+                return maxRange.iHigh;
+            }
+            return Math.round(value);
+        }
+        
+        const aqi = ((range.iHigh - range.iLow) / (range.cHigh - range.cLow)) * (value - range.cLow) + range.iLow;
+        return Math.round(aqi);
+    }
+
     static getAQIInfo(parameter: string, value: number) {
         // Strip out the custom aggregation suffixes to map to the core configuration metric (e.g. OZONE-8HR MAX -> OZONE)
         const cleanParam = parameter.split('-')[0];
@@ -134,7 +176,8 @@ export class DataService {
 
                 // Calculate AQI category from thresholds since index 8 is usually Agency name
                 const aqiInfo = this.getAQIInfo(parameter, value);
-                const aqiValue = aqiInfo ? String(Math.round(value)) : '';
+                const aqiVal = DataService.calculateAQI(parameter, value);
+                const aqiValue = String(aqiVal);
                 const category = aqiInfo?.category || '';
 
                 const mappedSiteName = Object.keys(CONFIG.sites).find(
@@ -183,41 +226,51 @@ export class DataService {
         };
 
         let maxRank = 0;
-        let maxValue = -1;
+        let maxAQIValue = -1;
+        let maxAQIPoint: AQIDataPoint | null = null;
 
         // First find the threshold for the "worst" current conditions
         allData.forEach(p => {
             const info = this.getAQIInfo(p.parameter, p.value);
             const category = info?.category || 'Unknown';
             const rank = severityRank[category] || 0;
+            const aqiNum = parseInt(p.aqi) || 0;
 
             if (rank > maxRank) {
                 maxRank = rank;
-                maxValue = p.value;
-            } else if (rank === maxRank && p.value > maxValue) {
-                maxValue = p.value;
+                maxAQIValue = aqiNum;
+                maxAQIPoint = p;
+            } else if (rank === maxRank && aqiNum > maxAQIValue) {
+                maxAQIValue = aqiNum;
+                maxAQIPoint = p;
             }
         });
 
-        // Collect all sites that hit both the max rank AND the max value
+        if (!maxAQIPoint) {
+            maxAQIPoint = allData[0];
+            maxAQIValue = parseInt(maxAQIPoint.aqi) || 0;
+        }
+
+        const finalInfo = this.getAQIInfo(maxAQIPoint.parameter, maxAQIPoint.value);
+        
+        // Collect all sites that hit both the max rank AND the max AQI value
         const tiedSites = allData.filter(p => {
             const info = this.getAQIInfo(p.parameter, p.value);
             const rank = severityRank[info?.category || 'Unknown'] || 0;
-            return rank === maxRank && p.value === maxValue;
+            const aqiNum = parseInt(p.aqi) || 0;
+            return rank === maxRank && aqiNum === maxAQIValue;
         });
 
         // Distinct site names
         const hotspotNames = Array.from(new Set(tiedSites.map(s => s.siteName)));
-        const primaryPoint = tiedSites[0];
-        const finalInfo = this.getAQIInfo(primaryPoint.parameter, primaryPoint.value);
 
         return {
-            maxAQI: maxValue,
+            maxAQI: maxAQIValue,
             hotspotSite: hotspotNames[0], // Backward compatibility
             hotspotSites: hotspotNames,
             category: finalInfo?.category || 'Unknown',
             color: finalInfo?.color || '#cbd5e1',
-            parameter: primaryPoint.parameter
+            parameter: maxAQIPoint.parameter
         };
     }
 
@@ -378,13 +431,14 @@ export class DataService {
                     if (mappedSiteName === 'Jackson NCORE' && parameter === 'RWD') return;
 
                     const aqiEstimate = this.getAQIInfo(parameter, value);
+                    const aqiVal = DataService.calculateAQI(parameter, value);
 
                     const dataPoint: AQIDataPoint = {
                         siteName: mappedSiteName,
                         parameter,
                         units,
                         value,
-                        aqi: '',
+                        aqi: String(aqiVal),
                         aqiCategory: aqiEstimate?.category || '',
                         location,
                         date: parts[0],

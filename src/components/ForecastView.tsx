@@ -31,10 +31,14 @@ export default function ForecastView() {
             setError('');
             const results: Record<string, any[]> = {};
             try {
-                for (const loc of FORECAST_LOCATIONS) {
+                const promises = FORECAST_LOCATIONS.map(async (loc) => {
                     const data = await DataService.fetchForecastData(loc.zip);
-                    results[loc.name] = data;
-                }
+                    return { name: loc.name, data };
+                });
+                const fetched = await Promise.all(promises);
+                fetched.forEach(item => {
+                    results[item.name] = item.data;
+                });
                 setForecasts(results);
             } catch (err: any) {
                 setError('Failed to load forecast data from AirNow API. Please try again later.');

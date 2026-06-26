@@ -5,7 +5,6 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { AQIDataPoint, DataService } from '@/lib/data';
 
-// Isolated Component to manage the Popup's content when a marker is clicked
 function PopupContent({ point, parameter, aqiInfo }: { point: AQIDataPoint, parameter: string, aqiInfo: any }) {
     return (
         <div className="text-center p-1 w-56">
@@ -13,9 +12,9 @@ function PopupContent({ point, parameter, aqiInfo }: { point: AQIDataPoint, para
             {point.time && <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">Observed: {point.time}</div>}
 
             <div className="flex items-center justify-center gap-3 mt-2 bg-slate-50 dark:bg-slate-900 rounded-lg p-2 border border-slate-100 dark:border-slate-800/80">
-                <div className="text-3xl font-black text-slate-800 dark:text-white">{point.value}</div>
+                <div className="text-3xl font-black text-slate-800 dark:text-white">{point.aqi || point.value}</div>
                 <div className="text-left">
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400">{point.units}</div>
+                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400">AQI</div>
                     <div
                         className="px-2 py-0.5 rounded font-bold text-xs"
                         style={{ backgroundColor: aqiInfo?.color, color: ['Good', 'Moderate'].includes(aqiInfo?.category || '') ? '#000' : '#fff' }}
@@ -23,6 +22,9 @@ function PopupContent({ point, parameter, aqiInfo }: { point: AQIDataPoint, para
                         {aqiInfo?.category || 'No Data'}
                     </div>
                 </div>
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-semibold">
+                Concentration: {point.value} {point.units}
             </div>
         </div>
     );
@@ -64,7 +66,7 @@ export default function AQIMap({ data, parameter }: { data: AQIDataPoint[], para
         border: 2px solid white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
       ">
-        ${point.value}
+        ${point.aqi || point.value}
       </div>
     `;
 
