@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { DataService } from '@/lib/data';
+import { DataService, TrendDataPoint } from '@/lib/data';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -36,7 +36,7 @@ const MS_SITES = [
 
 export default function TrendsChart() {
     const [selectedArea, setSelectedArea] = useState<string>('');
-    const [trendData, setTrendData] = useState<any[]>([]);
+    const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [isDark, setIsDark] = useState(false);
@@ -54,8 +54,8 @@ export default function TrendsChart() {
         return () => observer.disconnect();
     }, []);
 
-    const [allTrendData, setAllTrendData] = useState<any[]>([]);
-
+    const [allTrendData, setAllTrendData] = useState<TrendDataPoint[]>([]);
+ 
     useEffect(() => {
         const fetchAllTrends = async () => {
             setLoading(true);
@@ -63,7 +63,7 @@ export default function TrendsChart() {
             try {
                 const data = await DataService.fetchTrendData();
                 setAllTrendData(data);
-            } catch (err: any) {
+            } catch (err) {
                 setError('Failed to load historical trend data from AirNow.');
                 console.error(err);
             } finally {
@@ -72,13 +72,13 @@ export default function TrendsChart() {
         };
         fetchAllTrends();
     }, []);
-
+ 
     useEffect(() => {
         if (!selectedArea) {
             setTrendData([]);
             return;
         }
-        setTrendData(allTrendData.filter((d: any) => d.area === selectedArea));
+        setTrendData(allTrendData.filter((d: TrendDataPoint) => d.area === selectedArea));
     }, [selectedArea, allTrendData]);
 
     // Group data by parameter for multiple charts
@@ -161,14 +161,14 @@ export default function TrendsChart() {
                                 title: {
                                     display: true,
                                     text: `${param} Concentrations`,
-                                    font: { size: 14, weight: '900' as any, family: 'Inter' },
+                                    font: { size: 14, weight: 'bold' as const, family: 'Inter' },
                                     color: isDark ? '#e2e8f0' : '#475569',
                                     padding: { bottom: 20 },
-                                    align: 'start' as any
+                                    align: 'start' as const
                                 },
                                 tooltip: {
                                     backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.9)',
-                                    titleFont: { size: 12, weight: 'bold' as any },
+                                    titleFont: { size: 12, weight: 'bold' as const },
                                     bodyFont: { size: 12 },
                                     padding: 12,
                                     cornerRadius: 12,
@@ -179,7 +179,7 @@ export default function TrendsChart() {
                                 x: {
                                     grid: { display: false },
                                     ticks: { 
-                                        font: { size: 10, weight: 'bold' as any },
+                                        font: { size: 10, weight: 'bold' as const },
                                         color: isDark ? '#94a3b8' : '#64748b'
                                     }
                                 },
@@ -189,7 +189,7 @@ export default function TrendsChart() {
                                         drawBorder: false
                                     },
                                     ticks: {
-                                        font: { size: 10, weight: 'bold' as any },
+                                        font: { size: 10, weight: 'bold' as const },
                                         color: isDark ? '#94a3b8' : '#64748b'
                                     }
                                 }

@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { AQIDataPoint, DataService } from '@/lib/data';
 
-function PopupContent({ point, parameter, aqiInfo }: { point: AQIDataPoint, parameter: string, aqiInfo: any }) {
+function PopupContent({ point, aqiInfo }: { point: AQIDataPoint, aqiInfo: { color: string; category: string } | undefined }) {
     return (
         <div className="text-center p-1 w-56">
             <h4 className="font-bold text-lg m-0 text-slate-800 dark:text-slate-100">{point.siteName}</h4>
@@ -32,7 +32,6 @@ function PopupContent({ point, parameter, aqiInfo }: { point: AQIDataPoint, para
 
 export default function AQIMap({ data, parameter }: { data: AQIDataPoint[], parameter: string }) {
     const [isDark, setIsDark] = useState(false);
-    const bounds: [number, number][] = [];
 
     useEffect(() => {
         const checkTheme = () => {
@@ -91,14 +90,13 @@ export default function AQIMap({ data, parameter }: { data: AQIDataPoint[], para
                 />
                 {data.map((point, i) => {
                     if (!point.location) return null;
-                    bounds.push([point.location.lat, point.location.lng]);
 
-                    const aqiInfo = DataService.getAQIInfo(parameter, point.value);
+                    const aqiInfo: { color: string; category: string } | undefined = DataService.getAQIInfo(parameter, point.value);
 
                     return (
                         <Marker key={i} position={[point.location.lat, point.location.lng]} icon={createCustomIcon(point)}>
                             <Popup className="rounded-lg">
-                                <PopupContent point={point} parameter={parameter} aqiInfo={aqiInfo} />
+                                <PopupContent point={point} aqiInfo={aqiInfo} />
                             </Popup>
                         </Marker>
                     );

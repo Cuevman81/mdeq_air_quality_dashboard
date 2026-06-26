@@ -12,8 +12,10 @@ export default function ThemeToggle() {
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
     if (theme === 'dark' || (!theme && systemPrefersDark)) {
-      setIsDark(true);
       document.documentElement.classList.add('dark');
+      setTimeout(() => {
+        setIsDark(true);
+      }, 0);
     }
   }, []);
 

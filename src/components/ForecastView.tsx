@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { DataService } from '@/lib/data';
+import { DataService, ForecastItem } from '@/lib/data';
 import { Info, CloudRain } from 'lucide-react';
 
 const FORECAST_LOCATIONS = [
@@ -23,13 +23,13 @@ export default function ForecastView() {
     const [pollutant, setPollutant] = useState<string>('O3');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [forecasts, setForecasts] = useState<Record<string, any[]>>({});
-
+    const [forecasts, setForecasts] = useState<Record<string, ForecastItem[]>>({});
+ 
     useEffect(() => {
         const fetchAllForecasts = async () => {
             setLoading(true);
             setError('');
-            const results: Record<string, any[]> = {};
+            const results: Record<string, ForecastItem[]> = {};
             try {
                 const promises = FORECAST_LOCATIONS.map(async (loc) => {
                     const data = await DataService.fetchForecastData(loc.zip);
@@ -40,7 +40,7 @@ export default function ForecastView() {
                     results[item.name] = item.data;
                 });
                 setForecasts(results);
-            } catch (err: any) {
+            } catch (err) {
                 setError('Failed to load forecast data from AirNow API. Please try again later.');
                 console.error(err);
             } finally {
@@ -116,7 +116,7 @@ export default function ForecastView() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-6 duration-700 ease-out mt-8">
                     {FORECAST_LOCATIONS.map(loc => {
                         const allLocForecasts = forecasts[loc.name] || [];
-                        const filteredForecasts = allLocForecasts.filter((f: any) => f.ParameterName === pollutant);
+                        const filteredForecasts = allLocForecasts.filter((f: ForecastItem) => f.ParameterName === pollutant);
 
                         if (filteredForecasts.length === 0) {
                             return (
@@ -138,7 +138,7 @@ export default function ForecastView() {
                                     <div className="h-0.5 grow bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800"></div>
                                 </div>
 
-                                {filteredForecasts.map((forecast: any, index: number) => {
+                                {filteredForecasts.map((forecast: ForecastItem, index: number) => {
                                     const categoryName = forecast.Category?.Name || 'Unknown';
                                     const color = getCategoryColor(categoryName);
 
@@ -173,7 +173,7 @@ export default function ForecastView() {
 
                                                 {AQI_CATEGORY_INFO[categoryName] && (
                                                     <p className="text-sm font-semibold leading-relaxed text-slate-600 dark:text-slate-350 italic">
-                                                        "{AQI_CATEGORY_INFO[categoryName]}"
+                                                        &quot;{AQI_CATEGORY_INFO[categoryName]}&quot;
                                                     </p>
                                                 )}
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { DataService, AQIDataPoint } from '@/lib/data';
+import { DataService, ParsedAirQualityData } from '@/lib/data';
 import { Activity, Clock, TrendingUp, CloudRain, Flame, Filter } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -16,11 +16,18 @@ import SummaryCards from '@/components/SummaryCards';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('current');
-  const [data, setData] = useState<{ allData: AQIDataPoint[], parameters: string[], parameterData: Record<string, AQIDataPoint[]> } | null>(null);
+  const [data, setData] = useState<ParsedAirQualityData | null>(null);
   const [param, setParam] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statewideSummary, setStatewideSummary] = useState<any>(null);
+  const [statewideSummary, setStatewideSummary] = useState<{
+    maxAQI: number;
+    hotspotSite: string;
+    hotspotSites?: string[];
+    category: string;
+    color: string;
+    parameter: string;
+  } | null>(null);
   const [legendFilter, setLegendFilter] = useState<string[]>([]);
 
   // Lock default date strictly to Mississippi Local Time (America/Chicago) to avoid evening UTC rollovers into 'tomorrow'
@@ -30,6 +37,43 @@ export default function Dashboard() {
     d.setDate(d.getDate() - 1);
     return d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
   });
+
+  const loadData = useCallback(async (dateStr: string | null = null) => {
+    try {
+      setLoading(true);
+      setError('');
+      let response: ParsedAirQualityData;
+      if (dateStr) {
+        response = await DataService.fetchHistoricalDailyNAAQS(dateStr);
+      } else {
+        response = await DataService.fetchAirQualityData();
+      }
+ 
+      if (response && response.allData && response.allData.length > 0) {
+        setData(response);
+        setError('');
+
+        // Prioritize Ozone for current, or first available for historical.
+        // Use a functional update so loadData doesn't depend on `param` (avoids a render/fetch loop).
+        const availableParams = response.parameters;
+        if (availableParams.length > 0) {
+          setParam(prev =>
+            (!prev || !availableParams.includes(prev))
+              ? (availableParams.includes('OZONE') ? 'OZONE' : availableParams[0])
+              : prev
+          );
+        }
+      } else {
+        // If we tried to load but got nothing
+        setError('No data points found for this selection. This may be due to a temporary AirNow service interruption.');
+      }
+    } catch (err) {
+      console.error('Frontend Fetch Error:', err);
+      setError('Unable to reach Air Quality servers. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     // Reset state when switching tabs or dates to avoid data bleed
@@ -44,14 +88,14 @@ export default function Dashboard() {
     } else if (activeTab === 'current') {
       loadData();
     }
-  }, [activeTab, historicalDate]);
+  }, [activeTab, historicalDate, loadData]);
 
   useEffect(() => {
     // Only auto-refresh current tab
     if (activeTab !== 'current') return;
     const interval = setInterval(() => loadData(), 10 * 60 * 1000); // 10 min refresh to match new cache
     return () => clearInterval(interval);
-  }, [activeTab]);
+  }, [activeTab, loadData]);
 
   useEffect(() => {
     if (activeTab === 'current' && data?.allData) {
@@ -61,41 +105,6 @@ export default function Dashboard() {
       setStatewideSummary(null);
     }
   }, [data, activeTab]);
-
-  const loadData = async (dateStr: string | null = null) => {
-    try {
-      setLoading(true);
-      setError('');
-      let response: any;
-      if (dateStr) {
-        response = await DataService.fetchHistoricalDailyNAAQS(dateStr);
-      } else {
-        response = await DataService.fetchAirQualityData();
-      }
-
-      if (response && response.allData && response.allData.length > 0) {
-        setData(response);
-        setError('');
-
-        // Prioritize Ozone for current, or first available for historical
-        const availableParams = response.parameters;
-        if (availableParams.length > 0) {
-          if (!param || !availableParams.includes(param)) {
-            const defaultParam = availableParams.includes('OZONE') ? 'OZONE' : availableParams[0];
-            setParam(defaultParam);
-          }
-        }
-      } else {
-        // If we tried to load but got nothing
-        setError('No data points found for this selection. This may be due to a temporary AirNow service interruption.');
-      }
-    } catch (err: any) {
-      console.error('Frontend Fetch Error:', err);
-      setError('Unable to reach Air Quality servers. Please check your connection.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const navItems = [
     { id: 'current', label: 'Current Air Quality', icon: Activity },

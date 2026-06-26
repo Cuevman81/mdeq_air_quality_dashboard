@@ -17,6 +17,20 @@ interface BurnPermit {
     date: string;
 }
 
+interface ArcGISFeature {
+    properties: {
+        objectid: number;
+        latitude_dd: number;
+        longitude_dd: number;
+        county?: string;
+        burn_acres_estimate?: number;
+        burn_type?: string;
+        burn_purpose?: string;
+        day_night?: string;
+        permit_date?: string;
+    };
+}
+
 export default function BurnPermitsView() {
     const [permits, setPermits] = useState<BurnPermit[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }));
@@ -60,8 +74,8 @@ export default function BurnPermitsView() {
                 }
 
                 const parsedPermits = data.features
-                    .filter((f: any) => f.properties.latitude_dd && f.properties.longitude_dd)
-                    .map((f: any) => ({
+                    .filter((f: ArcGISFeature) => f.properties.latitude_dd && f.properties.longitude_dd)
+                    .map((f: ArcGISFeature) => ({
                         id: f.properties.objectid,
                         latitude: f.properties.latitude_dd,
                         longitude: f.properties.longitude_dd,
@@ -74,7 +88,7 @@ export default function BurnPermitsView() {
                     }));
 
                 setPermits(parsedPermits);
-            } catch (err: any) {
+            } catch (err) {
                 console.error("Failed to load MFC Burn Permits", err);
                 setError("Unable to communicate with the Mississippi Forestry Commission servers.");
             } finally {
@@ -217,7 +231,7 @@ export default function BurnPermitsView() {
                                             </div>
                                             <div>
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Declared Purpose:</span>
-                                                <p className="text-xs font-bold text-slate-600 dark:text-slate-450 italic leading-relaxed">"{permit.purpose}"</p>
+                                                 <p className="text-xs font-bold text-slate-600 dark:text-slate-450 italic leading-relaxed">&quot;{permit.purpose}&quot;</p>
                                             </div>
                                         </div>
                                     </div>

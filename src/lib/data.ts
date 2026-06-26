@@ -1,3 +1,36 @@
+export interface ParsedAirQualityData {
+    allData: AQIDataPoint[];
+    parameters: string[];
+    parameterData: Record<string, AQIDataPoint[]>;
+}
+
+export interface TrendDataPoint {
+    date: string;
+    area: string;
+    parameter: string;
+    units: string;
+    value: number;
+    aqi: number;
+}
+
+export interface ForecastItem {
+    DateForecast: string;
+    ParameterName: string;
+    AQI: number;
+    Category: {
+        Number: number;
+        Name: string;
+    };
+    Discussion?: string;
+}
+
+export interface Threshold {
+    max: number;
+    category: string;
+    color: string;
+    class: string;
+}
+
 export const CONFIG = {
     sites: {
         'CLEVELAND': { lat: 33.7508, lng: -90.7342 },
@@ -16,8 +49,16 @@ export const CONFIG = {
             { max: 9.0, category: 'Good', color: '#00e400', class: 'good' },
             { max: 35.4, category: 'Moderate', color: '#ffff00', class: 'moderate' },
             { max: 55.4, category: 'Unhealthy for Sensitive Groups', color: '#ff7e00', class: 'usg' },
-            { max: 150.4, category: 'Unhealthy', color: '#ff0000', class: 'unhealthy' },
-            { max: 250.4, category: 'Very Unhealthy', color: '#99004c', class: 'very-unhealthy' },
+            { max: 125.4, category: 'Unhealthy', color: '#ff0000', class: 'unhealthy' },
+            { max: 225.4, category: 'Very Unhealthy', color: '#99004c', class: 'very-unhealthy' },
+            { max: Infinity, category: 'Hazardous', color: '#7e0023', class: 'hazardous' }
+        ],
+        'PM10': [
+            { max: 54, category: 'Good', color: '#00e400', class: 'good' },
+            { max: 154, category: 'Moderate', color: '#ffff00', class: 'moderate' },
+            { max: 254, category: 'Unhealthy for Sensitive Groups', color: '#ff7e00', class: 'usg' },
+            { max: 354, category: 'Unhealthy', color: '#ff0000', class: 'unhealthy' },
+            { max: 424, category: 'Very Unhealthy', color: '#99004c', class: 'very-unhealthy' },
             { max: Infinity, category: 'Hazardous', color: '#7e0023', class: 'hazardous' }
         ],
         'OZONE': [
@@ -56,10 +97,9 @@ export class DataService {
                 { cLow: 0.0, cHigh: 9.0, iLow: 0, iHigh: 50 },
                 { cLow: 9.1, cHigh: 35.4, iLow: 51, iHigh: 100 },
                 { cLow: 35.5, cHigh: 55.4, iLow: 101, iHigh: 150 },
-                { cLow: 55.5, cHigh: 150.4, iLow: 151, iHigh: 200 },
-                { cLow: 150.5, cHigh: 250.4, iLow: 201, iHigh: 300 },
-                { cLow: 250.5, cHigh: 350.4, iLow: 301, iHigh: 400 },
-                { cLow: 350.5, cHigh: 500.4, iLow: 401, iHigh: 500 }
+                { cLow: 55.5, cHigh: 125.4, iLow: 151, iHigh: 200 },
+                { cLow: 125.5, cHigh: 225.4, iLow: 201, iHigh: 300 },
+                { cLow: 225.5, cHigh: 325.4, iLow: 301, iHigh: 500 }
             ];
         } else if (cleanParam === 'OZONE' || cleanParam === 'O3') {
             breakpoints = [
@@ -70,8 +110,18 @@ export class DataService {
                 { cLow: 106, cHigh: 200, iLow: 201, iHigh: 300 },
                 { cLow: 201, cHigh: 600, iLow: 301, iHigh: 500 }
             ];
+        } else if (cleanParam === 'PM10') {
+            breakpoints = [
+                { cLow: 0, cHigh: 54, iLow: 0, iHigh: 50 },
+                { cLow: 55, cHigh: 154, iLow: 51, iHigh: 100 },
+                { cLow: 155, cHigh: 254, iLow: 101, iHigh: 150 },
+                { cLow: 255, cHigh: 354, iLow: 151, iHigh: 200 },
+                { cLow: 355, cHigh: 424, iLow: 201, iHigh: 300 },
+                { cLow: 425, cHigh: 504, iLow: 301, iHigh: 400 },
+                { cLow: 505, cHigh: 604, iLow: 401, iHigh: 500 }
+            ];
         } else {
-            return Math.round(value);
+            return -1;
         }
         
         const range = breakpoints.find(b => value >= b.cLow && value <= b.cHigh);
@@ -92,8 +142,7 @@ export class DataService {
         // Strip out the custom aggregation suffixes to map to the core configuration metric (e.g. OZONE-8HR MAX -> OZONE)
         const cleanParam = parameter.split('-')[0];
 
-        // @ts-ignore
-        const thresholds = CONFIG.aqiThresholds[cleanParam] || [
+        const thresholds: Threshold[] = CONFIG.aqiThresholds[cleanParam as keyof typeof CONFIG.aqiThresholds] || [
             { max: 50, category: 'Good', color: '#00e400', class: 'good' },
             { max: 100, category: 'Moderate', color: '#ffff00', class: 'moderate' },
             { max: 150, category: 'Unhealthy for Sensitive Groups', color: '#ff7e00', class: 'usg' },
@@ -101,7 +150,7 @@ export class DataService {
             { max: 300, category: 'Very Unhealthy', color: '#99004c', class: 'very-unhealthy' },
             { max: Infinity, category: 'Hazardous', color: '#7e0023', class: 'hazardous' }
         ];
-        return thresholds.find((t: any) => value <= t.max);
+        return thresholds.find(t => value <= t.max);
     }
 
     static getHourlyDataUrl(dateStr?: string, absoluteOffset = 0) {
@@ -122,8 +171,8 @@ export class DataService {
             const hour = String(targetDate.getUTCHours()).padStart(2, '0');
 
             s3Url = `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/today/HourlyData_${year}${month}${day}${hour}.dat`;
-            // Add cache buster for real-time search
-            return `/api/proxy?url=${encodeURIComponent(s3Url)}&cb=${Date.now()}`;
+            // Remove cache buster to enable 5-minute CDN proxy caching
+            return `/api/proxy?url=${encodeURIComponent(s3Url)}`;
         } else {
             const [y, m, d] = dateStr.split('-');
             const hour = String(23 - absoluteOffset).padStart(2, '0'); 
@@ -150,34 +199,34 @@ export class DataService {
                 let obsDate = parts[0]; // e.g., 03/04/26
                 let obsTime = parts[1]; // e.g., 15:00
 
-                // Convert UTC to LST (America/Chicago)
+                // Calculate UTC to LST (America/Chicago)
                 try {
                     // Assuming format MM/DD/YY and HH:MM
                     const [m, d, yStr] = obsDate.split('/');
                     const year = yStr.length === 2 ? `20${yStr}` : yStr;
                     const cleanTime = obsTime.includes(':') ? obsTime : `${obsTime}:00`;
-
+ 
                     // Create UTC Date ISO string
                     const utcDateString = `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${cleanTime.padStart(5, '0')}:00Z`;
                     const dateObj = new Date(utcDateString);
-
+ 
                     if (!isNaN(dateObj.getTime())) {
                         obsDate = dateObj.toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: '2-digit', day: '2-digit', year: '2-digit' });
                         obsTime = dateObj.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' });
                     }
-                } catch (e) {
+                } catch {
                     // Fallback to raw if parsing fails
                 }
-
+ 
                 const siteName = parts[3];
                 const parameter = parts[5];
                 const units = parts[6];
                 const value = parseFloat(parts[7]);
-
+ 
                 // Calculate AQI category from thresholds since index 8 is usually Agency name
                 const aqiInfo = this.getAQIInfo(parameter, value);
                 const aqiVal = DataService.calculateAQI(parameter, value);
-                const aqiValue = String(aqiVal);
+                const aqiValue = aqiVal >= 0 ? String(aqiVal) : '--';
                 const category = aqiInfo?.category || '';
 
                 const mappedSiteName = Object.keys(CONFIG.sites).find(
@@ -206,7 +255,7 @@ export class DataService {
             const da = new Date(`${a.date} ${a.time}`).getTime();
             const db = new Date(`${b.date} ${b.time}`).getTime();
             return db - da;
-          } catch (e) { return 0; }
+          } catch { return 0; }
         });
 
         return { allData: mssites, parameters: Array.from(parameters).sort(), parameterData };
@@ -274,7 +323,7 @@ export class DataService {
         };
     }
 
-    static async fetchAirQualityData(dateStr: string | null = null, absoluteOffset = 0): Promise<any> {
+    static async fetchAirQualityData(dateStr: string | null = null, absoluteOffset = 0): Promise<ParsedAirQualityData> {
         // Limit search to 6 hours to avoid infinite loops during outages
         if (absoluteOffset > 6) {
             throw new Error(`AirNow search exhausted. No network data found for the last 6 hours.`);
@@ -306,7 +355,8 @@ export class DataService {
             }
 
             throw new Error(`Unexpected server response: ${response.status}`);
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as Error;
             if (error.message.includes('exhausted')) throw error;
             console.warn(`Network error at offset ${absoluteOffset}, searching back...`, error);
             return this.fetchAirQualityData(dateStr, absoluteOffset + 1);
@@ -317,7 +367,7 @@ export class DataService {
         console.log(`Fetching trailing ${hoursBack} hours for ${siteName} - ${parameter}`);
 
         // Find the most recent available "anchor" hour by searching back up to 6 hours
-        let anchorDate = new Date();
+        const anchorDate = new Date();
         let foundAnchor = false;
         
         for (let offset = 0; offset <= 6; offset++) {
@@ -333,7 +383,7 @@ export class DataService {
                         break;
                     }
                 }
-            } catch (e) { }
+            } catch { }
         }
 
         if (!foundAnchor) return [];
@@ -369,8 +419,8 @@ export class DataService {
                 const matchedPoint = parsed.allData.find(p => p.siteName.toLowerCase() === siteName.toLowerCase() && p.parameter === parameter);
                 if (matchedPoint && matchedPoint.time) {
                     // Reconstruct a sortable Date to ensure Chronological order
-                    let rawDate = new Date();
-                    const [timeStr, ampm, tz] = matchedPoint.time.split(' ');
+                    const rawDate = new Date();
+                    const [timeStr, ampm] = matchedPoint.time.split(' ');
                     const [h, m] = timeStr.split(':');
                     if (h && m) {
                         let hours = parseInt(h);
@@ -387,7 +437,7 @@ export class DataService {
         return trendData.sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime()).map(d => ({ time: d.time.replace(' CST', '').replace(' CDT', ''), value: d.value }));
     }
 
-    static async fetchHistoricalDailyNAAQS(dateStr: string): Promise<any> {
+    static async fetchHistoricalDailyNAAQS(dateStr: string): Promise<ParsedAirQualityData> {
         console.log(`Fetching official pre-calculated Individual Site NAAQS data for: ${dateStr}`);
         const [y, m, d] = dateStr.split('-');
 
@@ -438,7 +488,7 @@ export class DataService {
                         parameter,
                         units,
                         value,
-                        aqi: String(aqiVal),
+                        aqi: aqiVal >= 0 ? String(aqiVal) : '--',
                         aqiCategory: aqiEstimate?.category || '',
                         location,
                         date: parts[0],
@@ -466,7 +516,7 @@ export class DataService {
         }
     }
 
-    static async fetchTrendData(): Promise<any[]> {
+    static async fetchTrendData(): Promise<TrendDataPoint[]> {
         const dates = [];
         for (let i = 0; i < 10; i++) {
             const d = new Date();
@@ -480,7 +530,7 @@ export class DataService {
                 const data = await this.fetchHistoricalDailyNAAQS(dateStr);
 
                 // Map the parsed daily allData points to the format the TrendsChart expects
-                return data.allData.map((point: any) => ({
+                return data.allData.map((point) => ({
                     date: dateStr,
                     area: point.siteName,
                     parameter: point.parameter,
@@ -488,7 +538,7 @@ export class DataService {
                     value: point.value,
                     aqi: point.aqi ? parseInt(point.aqi) : -1
                 }));
-            } catch (err) {
+            } catch {
                 console.warn(`Failed to fetch trend data for ${dateStr}`);
                 return []; // Skip if day completely missing
             }
@@ -501,7 +551,7 @@ export class DataService {
         return msTrendData;
     }
 
-    static async fetchForecastData(zipCode: string): Promise<any> {
+    static async fetchForecastData(zipCode: string): Promise<ForecastItem[]> {
         const currentDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); // YYYY-MM-DD
 
         // We proxy this through our Next.js API route to avoid CORS.

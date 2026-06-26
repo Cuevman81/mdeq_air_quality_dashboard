@@ -124,7 +124,7 @@ export default function SummaryCards({ summary }: { summary: SummaryData | null 
                     <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-sky-200">Health Advisory</h3>
                 </div>
                 <p className="text-white/90 text-sm leading-relaxed font-bold relative italic pr-12">
-                    "{getHealthTip(summary.category)}"
+                    &quot;{getHealthTip(summary.category)}&quot;
                 </p>
                 <div className="mt-6 flex items-center gap-3 text-[9px] text-sky-300/60 font-black uppercase tracking-[0.3em] relative">
                     <div className="w-8 h-px bg-sky-300/30"></div>
