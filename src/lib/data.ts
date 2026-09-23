@@ -433,9 +433,11 @@ export class DataService {
         };
     }
 
-    static async fetchAirQualityData(dateStr: string | null = null, absoluteOffset = 0): Promise<ParsedAirQualityData> {
+    // estimateFallback: a newer hour whose official AQI wasn't published yet (see below)
+    static async fetchAirQualityData(dateStr: string | null = null, absoluteOffset = 0, estimateFallback: ParsedAirQualityData | null = null): Promise<ParsedAirQualityData> {
         // Limit search to 6 hours to avoid infinite loops during outages
         if (absoluteOffset > 6) {
+            if (estimateFallback) return estimateFallback;
             throw new Error(`AirNow search exhausted. No network data found for the last 6 hours.`);
         }
 
@@ -452,17 +454,24 @@ export class DataService {
                 // Case: File exists but MDEQ data hasn't been appended yet (Top of Hour)
                 if (parsed.allData.length === 0) {
                     console.log(`Hour ${absoluteOffset} file found but empty. Rolling back...`);
-                    return this.fetchAirQualityData(dateStr, absoluteOffset + 1);
+                    return this.fetchAirQualityData(dateStr, absoluteOffset + 1, estimateFallback);
                 }
 
-                DataService.applyNowCast(parsed, await DataService.fetchNowCast(url));
+                const nowcast = await DataService.fetchNowCast(url);
+                DataService.applyNowCast(parsed, nowcast);
+                // AirNow posts an hour's official AQI file 30-40 minutes after that hour's data.
+                // Until then, show the previous hour (official AQI, as AirNow.gov does) rather than
+                // estimates; if that hour has no AQI file either, show this hour's estimates.
+                if (!nowcast && !dateStr) {
+                    return estimateFallback ?? this.fetchAirQualityData(dateStr, absoluteOffset + 1, parsed);
+                }
                 return parsed;
             }
 
             // Case: File doesn't exist yet (404)
             if (response.status === 404) {
                 console.log(`Hour ${absoluteOffset} not published yet. Trying previous hour...`);
-                return this.fetchAirQualityData(dateStr, absoluteOffset + 1);
+                return this.fetchAirQualityData(dateStr, absoluteOffset + 1, estimateFallback);
             }
 
             throw new Error(`Unexpected server response: ${response.status}`);
@@ -470,7 +479,7 @@ export class DataService {
             const error = err as Error;
             if (error.message.includes('exhausted')) throw error;
             console.warn(`Network error at offset ${absoluteOffset}, searching back...`, error);
-            return this.fetchAirQualityData(dateStr, absoluteOffset + 1);
+            return this.fetchAirQualityData(dateStr, absoluteOffset + 1, estimateFallback);
         }
     }
 
