@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, LayerGroup, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
+import { basemapTiles, BASEMAP_ATTRIBUTION, BASEMAP_MAX_ZOOM } from '@/lib/basemap';
 import { Flame, MapPin, Maximize, AlertTriangle } from 'lucide-react';
 
 interface BurnPermit {
@@ -201,11 +202,10 @@ export default function BurnPermitsView() {
                 </div>
                 <div className="h-[650px] w-full relative z-0">
                     <MapContainer center={[32.7, -89.6]} zoom={7.2} scrollWheelZoom={false} className="h-full w-full">
-                        <TileLayer
-                            key={isDark ? 'dark' : 'light'}
-                            attribution={isDark ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | MFC' : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | MFC'}
-                            url={isDark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"}
-                        />
+                        <LayerGroup key={isDark ? 'dark' : 'light'}>
+                            <TileLayer attribution={`${BASEMAP_ATTRIBUTION} | MFC`} url={basemapTiles(isDark).base} maxZoom={BASEMAP_MAX_ZOOM} />
+                            <TileLayer url={basemapTiles(isDark).labels} maxZoom={BASEMAP_MAX_ZOOM} />
+                        </LayerGroup>
                         {permits.map((permit) => (
                             <Marker key={permit.id} position={[permit.latitude, permit.longitude]} icon={createFireIcon(permit.type)}>
                                 <Popup className="premium-popup">

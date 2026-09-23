@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, LayerGroup, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { AQIDataPoint, DataService } from '@/lib/data';
+import { basemapTiles, BASEMAP_ATTRIBUTION, BASEMAP_MAX_ZOOM } from '@/lib/basemap';
 
 function PopupContent({ point, aqiInfo }: { point: AQIDataPoint, aqiInfo: { color: string; category: string } | undefined }) {
     return (
@@ -75,22 +76,15 @@ export default function AQIMap({ data }: { data: AQIDataPoint[] }) {
         return L.divIcon({ html, className: 'custom-icon', iconSize: [32, 32], iconAnchor: [16, 16] });
     };
 
-    const tileUrl = isDark 
-        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-
-    const attribution = isDark
-        ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    const tiles = basemapTiles(isDark);
 
     return (
         <div className="h-[500px] w-full rounded-2xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-800 transition-all duration-300">
             <MapContainer center={[32.3547, -89.3985]} zoom={7} scrollWheelZoom={false} className="h-full w-full z-0 relative">
-                <TileLayer
-                    key={tileUrl} // Force re-render of TileLayer when theme URL changes!
-                    attribution={attribution}
-                    url={tileUrl}
-                />
+                <LayerGroup key={tiles.base /* re-mount base + labels together when the theme changes */}>
+                    <TileLayer attribution={BASEMAP_ATTRIBUTION} url={tiles.base} maxZoom={BASEMAP_MAX_ZOOM} />
+                    <TileLayer url={tiles.labels} maxZoom={BASEMAP_MAX_ZOOM} />
+                </LayerGroup>
                 {data.map((point, i) => {
                     if (!point.location) return null;
 
