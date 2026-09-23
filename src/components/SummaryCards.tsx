@@ -10,6 +10,7 @@ interface SummaryData {
     category: string;
     color: string;
     parameter: string;
+    estimated?: boolean;
 }
 
 export default function SummaryCards({ summary }: { summary: SummaryData | null }) {
@@ -103,11 +104,12 @@ export default function SummaryCards({ summary }: { summary: SummaryData | null 
                             boxShadow: `0 10px 30px -10px ${summary.color}80`
                         }}
                     >
-                        {summary.maxAQI}
+                        {summary.maxAQI}{summary.estimated ? '*' : ''}
                     </div>
                     <div className="flex flex-col">
                         <span className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-wider">Top Pollutant</span>
                         <span className="text-slate-900 dark:text-white font-black text-lg">{summary.parameter}</span>
+                        {summary.estimated && <span className="text-slate-400 dark:text-slate-500 font-bold text-[10px]">* estimate, official AQI not yet published</span>}
                     </div>
                 </div>
             </div>

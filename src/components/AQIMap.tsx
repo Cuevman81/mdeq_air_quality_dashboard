@@ -12,7 +12,7 @@ function PopupContent({ point, aqiInfo }: { point: AQIDataPoint, aqiInfo: { colo
             {point.time && <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">Observed: {point.time}</div>}
 
             <div className="flex items-center justify-center gap-3 mt-2 bg-slate-50 dark:bg-slate-900 rounded-lg p-2 border border-slate-100 dark:border-slate-800/80">
-                <div className="text-3xl font-black text-slate-800 dark:text-white">{point.aqi || point.value}</div>
+                <div className="text-3xl font-black text-slate-800 dark:text-white">{point.aqi || point.value}{point.aqiEstimated ? '*' : ''}</div>
                 <div className="text-left">
                     <div className="text-xs font-bold text-slate-500 dark:text-slate-400">AQI</div>
                     <div
@@ -26,11 +26,14 @@ function PopupContent({ point, aqiInfo }: { point: AQIDataPoint, aqiInfo: { colo
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-semibold">
                 Concentration: {point.value} {point.units}
             </div>
+            {point.aqiEstimated && (
+                <div className="text-[10px] text-slate-400 mt-1">* Estimate: AirNow&apos;s NowCast AQI for this hour isn&apos;t published yet</div>
+            )}
         </div>
     );
 }
 
-export default function AQIMap({ data, parameter }: { data: AQIDataPoint[], parameter: string }) {
+export default function AQIMap({ data }: { data: AQIDataPoint[] }) {
     const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
@@ -50,7 +53,7 @@ export default function AQIMap({ data, parameter }: { data: AQIDataPoint[], para
     }, []);
 
     const createCustomIcon = (point: AQIDataPoint) => {
-        const aqiInfo = DataService.getAQIInfo(parameter, point.value);
+        const aqiInfo = DataService.rowInfo(point);
         const bgColor = aqiInfo?.color || 'gray';
         const textColor = ['Good', 'Moderate'].includes(aqiInfo?.category || '') ? '#000' : '#fff';
 
@@ -65,7 +68,7 @@ export default function AQIMap({ data, parameter }: { data: AQIDataPoint[], para
         border: 2px solid white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
       ">
-        ${point.aqi || point.value}
+        ${point.aqi || point.value}${point.aqiEstimated ? '*' : ''}
       </div>
     `;
 
@@ -91,7 +94,7 @@ export default function AQIMap({ data, parameter }: { data: AQIDataPoint[], para
                 {data.map((point, i) => {
                     if (!point.location) return null;
 
-                    const aqiInfo: { color: string; category: string } | undefined = DataService.getAQIInfo(parameter, point.value);
+                    const aqiInfo: { color: string; category: string } | undefined = DataService.rowInfo(point);
 
                     return (
                         <Marker key={i} position={[point.location.lat, point.location.lng]} icon={createCustomIcon(point)}>

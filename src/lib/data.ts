@@ -69,7 +69,16 @@ export const CONFIG = {
             { max: 200, category: 'Very Unhealthy', color: '#99004c', class: 'very-unhealthy' },
             { max: Infinity, category: 'Hazardous', color: '#7e0023', class: 'hazardous' }
         ]
-    }
+    },
+    // Category by AQI number (TAD Table 6), for any pollutant once its AQI is known
+    aqiIndexScale: [
+        { max: 50, category: 'Good', color: '#00e400', class: 'good' },
+        { max: 100, category: 'Moderate', color: '#ffff00', class: 'moderate' },
+        { max: 150, category: 'Unhealthy for Sensitive Groups', color: '#ff7e00', class: 'usg' },
+        { max: 200, category: 'Unhealthy', color: '#ff0000', class: 'unhealthy' },
+        { max: 300, category: 'Very Unhealthy', color: '#99004c', class: 'very-unhealthy' },
+        { max: Infinity, category: 'Hazardous', color: '#7e0023', class: 'hazardous' }
+    ] as Threshold[]
 };
 
 export interface AQIDataPoint {
@@ -82,6 +91,9 @@ export interface AQIDataPoint {
     location: { lat: number; lng: number } | null;
     date?: string;
     time?: string;
+    aqsId?: string;
+    observedAt?: string;     // ISO UTC start of the observation hour
+    aqiEstimated?: boolean;  // true while AirNow's own AQI for this hour isn't published yet
 }
 
 export class DataService {
@@ -148,15 +160,102 @@ export class DataService {
         // Strip out the custom aggregation suffixes to map to the core configuration metric (e.g. OZONE-8HR MAX -> OZONE)
         const cleanParam = parameter.split('-')[0];
 
-        const thresholds: Threshold[] = CONFIG.aqiThresholds[cleanParam as keyof typeof CONFIG.aqiThresholds] || [
-            { max: 50, category: 'Good', color: '#00e400', class: 'good' },
-            { max: 100, category: 'Moderate', color: '#ffff00', class: 'moderate' },
-            { max: 150, category: 'Unhealthy for Sensitive Groups', color: '#ff7e00', class: 'usg' },
-            { max: 200, category: 'Unhealthy', color: '#ff0000', class: 'unhealthy' },
-            { max: 300, category: 'Very Unhealthy', color: '#99004c', class: 'very-unhealthy' },
-            { max: Infinity, category: 'Hazardous', color: '#7e0023', class: 'hazardous' }
-        ];
-        return thresholds.find(t => value <= t.max);
+        // Parameters without a table (TEMP, RWS, SO2, CO, NO2 concentrations) get no category:
+        // the AQI-number scale applied to ppb, ppm, degrees C or knots isn't an AQI.
+        const thresholds: Threshold[] | undefined = CONFIG.aqiThresholds[cleanParam as keyof typeof CONFIG.aqiThresholds];
+        return thresholds?.find(t => value <= t.max);
+    }
+
+    static getAQIInfoForIndex(aqi: number) {
+        return Number.isFinite(aqi) && aqi >= 0 ? CONFIG.aqiIndexScale.find(t => aqi <= t.max) : undefined;
+    }
+
+    // Category and color of a table/map row, from its AQI number (undefined when it has none)
+    static rowInfo(row: AQIDataPoint) {
+        return DataService.getAQIInfoForIndex(parseInt(row.aqi));
+    }
+
+    static normalizeAqsId(id: string) {
+        const t = id.trim();
+        return t.length === 12 && t.startsWith('840') ? t.slice(3) : t;
+    }
+
+    // Split one line of a quoted, comma-delimited file (HourlyAQObs)
+    static splitCsvLine(line: string): string[] {
+        const out: string[] = [];
+        let cur = '';
+        let quoted = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (quoted) {
+                if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+                else if (ch === '"') quoted = false;
+                else cur += ch;
+            } else if (ch === '"') quoted = true;
+            else if (ch === ',') { out.push(cur); cur = ''; }
+            else cur += ch;
+        }
+        out.push(cur);
+        return out;
+    }
+
+    // AirNow's HourlyAQObs_YYYYMMDDHH.dat carries, per site, the NowCast AQI for ozone, PM2.5
+    // and PM10 and the 1-hour AQI for NO2 (AirNow "Hourly AQ Obs File" fact sheet). Returns
+    // AQS ID -> { parameter name as in HourlyData: AQI } for Mississippi sites.
+    static parseNowCastFile(content: string): Map<string, Record<string, number>> {
+        const byId = new Map<string, Record<string, number>>();
+        const lines = content.split('\n');
+        const header = DataService.splitCsvLine((lines[0] || '').trim());
+        const idCol = header.indexOf('AQSID');
+        const cols: Record<string, number> = {
+            'OZONE': header.indexOf('OZONE_AQI'),
+            'PM2.5': header.indexOf('PM25_AQI'),
+            'PM10': header.indexOf('PM10_AQI'),
+            'NO2': header.indexOf('NO2_AQI'),
+        };
+        if (idCol < 0) return byId;
+        for (const line of lines.slice(1)) {
+            if (!/^"?(840)?28/.test(line)) continue; // Mississippi sites only
+            const fields = DataService.splitCsvLine(line.trim());
+            const aqis: Record<string, number> = {};
+            for (const [param, col] of Object.entries(cols)) {
+                const v = col >= 0 ? (fields[col] || '').trim() : '';
+                if (v !== '' && Number.isFinite(Number(v))) aqis[param] = Math.round(Number(v));
+            }
+            byId.set(DataService.normalizeAqsId(fields[idCol] || ''), aqis);
+        }
+        return byId;
+    }
+
+    static async fetchNowCast(hourlyProxyUrl: string): Promise<Map<string, Record<string, number>> | null> {
+        // Same hour as the hourly file, but it is only published in the dated folder
+        const m = decodeURIComponent(hourlyProxyUrl).match(/HourlyData_((\d{4})(\d{4})\d{2})\.dat$/);
+        if (!m) return null;
+        const [, stamp, y, md] = m;
+        const s3Url = `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/${y}/${y}${md}/HourlyAQObs_${stamp}.dat`;
+        try {
+            const response = await fetch(`/api/proxy?url=${encodeURIComponent(s3Url)}`);
+            return response.ok ? DataService.parseNowCastFile(await response.text()) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    // The "current" AQI must be AirNow's: for ozone and PM that is the NowCast, not one hour's
+    // concentration scored against 8-hour/24-hour breakpoints (TAD EPA-403/B-26-003, "Real-time
+    // AQI reporting: the NowCast"). Rows keep the one-hour estimate, flagged, until AirNow
+    // publishes that hour's AQI file.
+    static applyNowCast(data: ParsedAirQualityData, nowcast: Map<string, Record<string, number>> | null) {
+        data.allData.forEach(row => {
+            const official = nowcast?.get(row.aqsId || '')?.[row.parameter];
+            if (official !== undefined && official >= 0) {
+                row.aqi = String(official);
+                row.aqiEstimated = false;
+            } else {
+                row.aqiEstimated = row.aqi !== '--';
+            }
+            row.aqiCategory = DataService.rowInfo(row)?.category || '';
+        });
     }
 
     static getHourlyDataUrl(dateStr?: string, absoluteOffset = 0) {
@@ -204,6 +303,7 @@ export class DataService {
             if (parts.length >= 8) {
                 let obsDate = parts[0]; // e.g., 03/04/26
                 let obsTime = parts[1]; // e.g., 15:00
+                let observedAt: string | undefined;
 
                 // Calculate UTC to LST (America/Chicago)
                 try {
@@ -217,6 +317,7 @@ export class DataService {
                     const dateObj = new Date(utcDateString);
  
                     if (!isNaN(dateObj.getTime())) {
+                        observedAt = dateObj.toISOString();
                         obsDate = dateObj.toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: '2-digit', day: '2-digit', year: '2-digit' });
                         obsTime = dateObj.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' });
                     }
@@ -229,11 +330,10 @@ export class DataService {
                 const units = parts[6];
                 const value = parseFloat(parts[7]);
  
-                // Calculate AQI category from thresholds since index 8 is usually Agency name
-                const aqiInfo = this.getAQIInfo(parameter, value);
+                // One-hour estimate; fetchAirQualityData replaces it with AirNow's NowCast AQI
                 const aqiVal = DataService.calculateAQI(parameter, value);
                 const aqiValue = aqiVal >= 0 ? String(aqiVal) : '--';
-                const category = aqiInfo?.category || '';
+                const category = DataService.getAQIInfoForIndex(aqiVal)?.category || '';
 
                 const mappedSiteName = Object.keys(CONFIG.sites).find(
                     k => k.toLowerCase() === siteName.toLowerCase()
@@ -248,7 +348,7 @@ export class DataService {
                 if (isMississippi && siteName && parameter && !isNaN(value)) {
                     if (mappedSiteName === 'Jackson NCORE' && parameter === 'RWD') return;
 
-                    const dataPoint = { siteName: mappedSiteName, parameter, units, value, aqi: aqiValue, aqiCategory: category, location: location || null, date: obsDate, time: obsTime };
+                    const dataPoint: AQIDataPoint = { siteName: mappedSiteName, parameter, units, value, aqi: aqiValue, aqiCategory: category, location: location || null, date: obsDate, time: obsTime, aqsId: DataService.normalizeAqsId(parts[2] || ''), observedAt };
 
                     mssites.push(dataPoint);
                     parameters.add(parameter);
@@ -289,7 +389,7 @@ export class DataService {
 
         // First find the threshold for the "worst" current conditions
         allData.forEach(p => {
-            const info = this.getAQIInfo(p.parameter, p.value);
+            const info = this.rowInfo(p);
             const category = info?.category || 'Unknown';
             const rank = severityRank[category] || 0;
             const aqiNum = parseInt(p.aqi) || 0;
@@ -309,11 +409,11 @@ export class DataService {
             maxAQIValue = parseInt(maxAQIPoint.aqi) || 0;
         }
 
-        const finalInfo = this.getAQIInfo(maxAQIPoint.parameter, maxAQIPoint.value);
+        const finalInfo = this.rowInfo(maxAQIPoint);
         
         // Collect all sites that hit both the max rank AND the max AQI value
         const tiedSites = allData.filter(p => {
-            const info = this.getAQIInfo(p.parameter, p.value);
+            const info = this.rowInfo(p);
             const rank = severityRank[info?.category || 'Unknown'] || 0;
             const aqiNum = parseInt(p.aqi) || 0;
             return rank === maxRank && aqiNum === maxAQIValue;
@@ -328,7 +428,8 @@ export class DataService {
             hotspotSites: hotspotNames,
             category: finalInfo?.category || 'Unknown',
             color: finalInfo?.color || '#cbd5e1',
-            parameter: maxAQIPoint.parameter
+            parameter: maxAQIPoint.parameter,
+            estimated: !!maxAQIPoint.aqiEstimated
         };
     }
 
@@ -354,6 +455,7 @@ export class DataService {
                     return this.fetchAirQualityData(dateStr, absoluteOffset + 1);
                 }
 
+                DataService.applyNowCast(parsed, await DataService.fetchNowCast(url));
                 return parsed;
             }
 
@@ -489,7 +591,6 @@ export class DataService {
                     // Specifically suppress windspeed readings if present
                     if (mappedSiteName === 'Jackson NCORE' && parameter === 'RWD') return;
 
-                    const aqiEstimate = this.getAQIInfo(parameter, value);
                     const aqiVal = DataService.calculateAQI(parameter, value);
 
                     const dataPoint: AQIDataPoint = {
@@ -498,7 +599,7 @@ export class DataService {
                         units,
                         value,
                         aqi: aqiVal >= 0 ? String(aqiVal) : '--',
-                        aqiCategory: aqiEstimate?.category || '',
+                        aqiCategory: DataService.getAQIInfoForIndex(aqiVal)?.category || '',
                         location,
                         date: parts[0],
                         time: `NAAQS Daily Average`

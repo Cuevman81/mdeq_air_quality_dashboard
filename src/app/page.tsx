@@ -14,6 +14,8 @@ import TrendsChart from '@/components/TrendsChart';
 import ForecastView from '@/components/ForecastView';
 import SummaryCards from '@/components/SummaryCards';
 
+const ESTIMATE_NOTE = "Estimated from this hour's reading; AirNow hasn't published its official (NowCast) AQI for this hour yet.";
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('current');
   const [data, setData] = useState<ParsedAirQualityData | null>(null);
@@ -27,6 +29,7 @@ export default function Dashboard() {
     category: string;
     color: string;
     parameter: string;
+    estimated?: boolean;
   } | null>(null);
   const [legendFilter, setLegendFilter] = useState<string[]>([]);
 
@@ -289,8 +292,7 @@ export default function Dashboard() {
                 {activeTab === 'current' && <SummaryCards summary={statewideSummary} />}
 
                 <AQIMap 
-                  data={(data.parameterData[param] || []).filter(p => !legendFilter.includes(DataService.getAQIInfo(param, p.value)?.category || ''))} 
-                  parameter={param} 
+                  data={(data.parameterData[param] || []).filter(p => !legendFilter.includes(DataService.rowInfo(p)?.category || ''))} 
                 />
 
                 <div className="glass rounded-3xl shadow-xl overflow-hidden border-slate-200 dark:border-slate-800">
@@ -314,16 +316,19 @@ export default function Dashboard() {
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                         {(data.parameterData[param] || [])
                           .filter(row => {
-                            const aqiInfo = DataService.getAQIInfo(param, row.value);
+                            const aqiInfo = DataService.rowInfo(row);
                             return !legendFilter.includes(aqiInfo?.category || '');
                           })
                           .map((row, i) => {
-                            const aqiInfo = DataService.getAQIInfo(param, row.value);
+                            const aqiInfo = DataService.rowInfo(row);
                             return (
                               <tr key={i} className="group hover:bg-primary/5 transition-colors duration-200">
                                 <td className="px-8 py-5 font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">{row.siteName}</td>
                                 <td className="px-8 py-5 text-slate-500 dark:text-slate-400 font-medium">{row.time || '--'}</td>
-                                <td className="px-8 py-5 text-xl font-black text-slate-900 dark:text-white text-right tabular-nums">{row.aqi}</td>
+                                <td className="px-8 py-5 text-xl font-black text-slate-900 dark:text-white text-right tabular-nums">
+                                  {row.aqi}
+                                  {row.aqiEstimated && <span title={ESTIMATE_NOTE} className="text-slate-400 cursor-help">*</span>}
+                                </td>
                                 <td className="px-8 py-5 text-base font-bold text-slate-500 dark:text-slate-400 text-right tabular-nums">{row.value}</td>
                                 <td className="px-3 py-5 text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">{row.units}</td>
                                 <td className="px-8 py-5">
@@ -336,7 +341,7 @@ export default function Dashboard() {
                                     }}
                                   >
                                     <span className="w-2.5 h-2.5 rounded-full mr-2.5 shadow-lg border border-white/20" style={{ backgroundColor: aqiInfo?.color }}></span>
-                                    {aqiInfo?.category}
+                                    {aqiInfo?.category ?? 'No AQI'}
                                   </span>
                                 </td>
                               </tr>
@@ -345,6 +350,9 @@ export default function Dashboard() {
                       </tbody>
                     </table>
                   </div>
+                  {(data.parameterData[param] || []).some(row => row.aqiEstimated) && (
+                    <p className="px-8 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 border-t border-slate-200/50 dark:border-slate-800/50">* {ESTIMATE_NOTE}</p>
+                  )}
                 </div>
               </>
             )}
