@@ -129,8 +129,9 @@ export class DataService {
                 { cLow: 155, cHigh: 254, iLow: 101, iHigh: 150 },
                 { cLow: 255, cHigh: 354, iLow: 151, iHigh: 200 },
                 { cLow: 355, cHigh: 424, iLow: 201, iHigh: 300 },
-                { cLow: 425, cHigh: 504, iLow: 301, iHigh: 400 },
-                { cLow: 505, cHigh: 604, iLow: 401, iHigh: 500 }
+                // One Hazardous segment since the 2024 AQI revision: 425+ is AQI 301+,
+                // and AQI 500 is 604 ug/m3 (EPA-403/B-26-003, Table 6 and footnote 4).
+                { cLow: 425, cHigh: 604, iLow: 301, iHigh: 500 }
             ];
         } else {
             return -1;
