@@ -60,13 +60,14 @@ export default function Dashboard() {
         const newest = response.allData[0].observedAt;
         setDataAgeHours(!dateStr && newest ? (Date.now() - Date.parse(newest)) / 3600e3 : null);
 
-        // Prioritize Ozone for current, or first available for historical.
+        // Prioritize Ozone (hourly "OZONE", daily "OZONE-8HR"), else the first available.
         // Use a functional update so loadData doesn't depend on `param` (avoids a render/fetch loop).
         const availableParams = response.parameters;
         if (availableParams.length > 0) {
+          const ozone = ['OZONE', 'OZONE-8HR'].find(p => availableParams.includes(p));
           setParam(prev =>
             (!prev || !availableParams.includes(prev))
-              ? (availableParams.includes('OZONE') ? 'OZONE' : availableParams[0])
+              ? (ozone ?? availableParams[0])
               : prev
           );
         }
