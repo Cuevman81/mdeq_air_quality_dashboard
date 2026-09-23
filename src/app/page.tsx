@@ -395,7 +395,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white">Historical Trends</h3>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">10-Day regional lookback using AirNow's preliminary (unvalidated) daily data.</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">10-Day regional lookback using preliminary (unvalidated) AirNow daily data.</p>
               </div>
             </div>
             <TrendsChart />
