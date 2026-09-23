@@ -549,7 +549,7 @@ export class DataService {
     }
 
     static async fetchHistoricalDailyNAAQS(dateStr: string): Promise<ParsedAirQualityData> {
-        console.log(`Fetching official pre-calculated Individual Site NAAQS data for: ${dateStr}`);
+        console.log(`Fetching AirNow daily summary (preliminary data) for: ${dateStr}`);
         const [y, m, d] = dateStr.split('-');
 
         const s3Url = `https://s3-us-west-1.amazonaws.com/files.airnowtech.org/airnow/${y}/${y}${m}${d}/daily_data.dat`;
@@ -579,7 +579,7 @@ export class DataService {
                     const units = parts[4];
                     const value = parseFloat(parts[5]);
 
-                    // Exclude OZONE-1HR since OZONE-8HR is typically the requested parameter for historical NAAQS compliance
+                    // Exclude OZONE-1HR: the daily ozone AQI is based on the daily max 8-hour average (OZONE-8HR)
                     if (parameter === 'OZONE-1HR') return;
 
                     const mappedSiteName = Object.keys(CONFIG.sites).find(
@@ -602,7 +602,7 @@ export class DataService {
                         aqiCategory: DataService.getAQIInfoForIndex(aqiVal)?.category || '',
                         location,
                         date: parts[0],
-                        time: `NAAQS Daily Average`
+                        time: `Daily summary`
                     };
 
                     mssites.push(dataPoint);
@@ -621,7 +621,7 @@ export class DataService {
             };
 
         } catch (error) {
-            console.error("NAAQS Fetch Error:", error);
+            console.error("Daily data fetch error:", error);
             throw error;
         }
     }
@@ -636,7 +636,7 @@ export class DataService {
 
         const promises = dates.map(async (dateStr) => {
             try {
-                // Fetch the official Daily NAAQS aggregations for the day
+                // Fetch AirNow's daily summaries for the day (preliminary data)
                 const data = await this.fetchHistoricalDailyNAAQS(dateStr);
 
                 // Map the parsed daily allData points to the format the TrendsChart expects

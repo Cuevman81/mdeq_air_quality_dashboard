@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Mississippi Air Quality Dashboard | MDEQ",
-  description: "Real-time air quality monitoring and NAAQS compliance tracking for Mississippi. Powered by MDEQ and AirNow.",
+  description: "Real-time air quality monitoring and daily AQI summaries for Mississippi. Powered by MDEQ and AirNow.",
 };
 
 export default function RootLayout({

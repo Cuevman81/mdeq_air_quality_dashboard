@@ -316,8 +316,11 @@ export default function Dashboard() {
                 <div className="glass rounded-3xl shadow-xl overflow-hidden border-slate-200 dark:border-slate-800">
                   <div className="px-8 py-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center">
                     <h3 className="font-extrabold text-xl text-slate-800 dark:text-white">
-                      {activeTab === 'current' ? 'Live Network Readings' : 'Daily NAAQS Compliance'} ({param})
+                      {activeTab === 'current' ? 'Live Network Readings' : 'Daily AQI Summary'} ({param})
                     </h3>
+                    {activeTab === 'historical' && (
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Preliminary AirNow data, not for NAAQS compliance</span>
+                    )}
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm border-collapse">
@@ -391,7 +394,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white">Historical Trends</h3>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">10-Day regional lookback using AirNow datasets.</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">10-Day regional lookback using AirNow's preliminary (unvalidated) daily data.</p>
               </div>
             </div>
             <TrendsChart />
