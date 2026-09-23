@@ -124,17 +124,23 @@ export class DataService {
             return -1;
         }
         
-        const range = breakpoints.find(b => value >= b.cLow && value <= b.cHigh);
+        // EPA AQI Technical Assistance Document (EPA-403/B-26-003), step 1: truncate first
+        // (O3 ppm to 3 decimals = whole ppb, PM2.5 to 0.1 ug/m3, PM10 to a whole ug/m3),
+        // so a value such as 35.45 can't fall in the gap between two breakpoints.
+        const scale = (cleanParam === 'PM2.5' || cleanParam === 'PM25') ? 10 : 1;
+        const conc = Math.floor(value * scale + 1e-6) / scale;
+
+        const range = breakpoints.find(b => conc >= b.cLow && conc <= b.cHigh);
         if (!range) {
-            if (value < 0) return 0;
+            if (conc < 0) return 0;
             const maxRange = breakpoints[breakpoints.length - 1];
-            if (value > maxRange.cHigh) {
+            if (conc > maxRange.cHigh) {
                 return maxRange.iHigh;
             }
-            return Math.round(value);
+            return -1; // not a number we can score; never return the concentration as an AQI
         }
-        
-        const aqi = ((range.iHigh - range.iLow) / (range.cHigh - range.cLow)) * (value - range.cLow) + range.iLow;
+
+        const aqi = ((range.iHigh - range.iLow) / (range.cHigh - range.cLow)) * (conc - range.cLow) + range.iLow;
         return Math.round(aqi);
     }
 
