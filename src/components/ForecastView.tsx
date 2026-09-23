@@ -24,28 +24,32 @@ export default function ForecastView() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [forecasts, setForecasts] = useState<Record<string, ForecastItem[]>>({});
+    const [failedLocations, setFailedLocations] = useState<string[]>([]);
  
     useEffect(() => {
         const fetchAllForecasts = async () => {
             setLoading(true);
             setError('');
+            // AirNow can fail for one location while answering the others, so settle each
+            // separately: show what loaded, and a note on the location that didn't.
+            const settled = await Promise.allSettled(FORECAST_LOCATIONS.map(loc => DataService.fetchForecastData(loc.zip)));
             const results: Record<string, ForecastItem[]> = {};
-            try {
-                const promises = FORECAST_LOCATIONS.map(async (loc) => {
-                    const data = await DataService.fetchForecastData(loc.zip);
-                    return { name: loc.name, data };
-                });
-                const fetched = await Promise.all(promises);
-                fetched.forEach(item => {
-                    results[item.name] = item.data;
-                });
-                setForecasts(results);
-            } catch (err) {
+            const failed: string[] = [];
+            settled.forEach((result, i) => {
+                const name = FORECAST_LOCATIONS[i].name;
+                if (result.status === 'fulfilled') {
+                    results[name] = result.value;
+                } else {
+                    failed.push(name);
+                    console.error(`Forecast for ${name} failed:`, result.reason);
+                }
+            });
+            setForecasts(results);
+            setFailedLocations(failed);
+            if (failed.length === FORECAST_LOCATIONS.length) {
                 setError('Failed to load forecast data from AirNow API. Please try again later.');
-                console.error(err);
-            } finally {
-                setLoading(false);
             }
+            setLoading(false);
         };
 
         fetchAllForecasts();
@@ -117,15 +121,18 @@ export default function ForecastView() {
                     {FORECAST_LOCATIONS.map(loc => {
                         const allLocForecasts = forecasts[loc.name] || [];
                         const filteredForecasts = allLocForecasts.filter((f: ForecastItem) => f.ParameterName === pollutant);
+                        const didFail = failedLocations.includes(loc.name);
 
-                        if (filteredForecasts.length === 0) {
+                        if (didFail || filteredForecasts.length === 0) {
                             return (
                                 <div key={loc.name} className="glass rounded-[2rem] p-10 text-center h-full flex flex-col justify-center min-h-[300px] border-slate-200/50 dark:border-slate-800/50">
                                     <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-400">
                                         <CloudRain size={32} />
                                     </div>
                                     <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2">{loc.name}</h3>
-                                    <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-widest">No Forecast Data Available</p>
+                                    {didFail
+                                        ? <p className="text-amber-600 dark:text-amber-400 font-bold text-xs">{`AirNow didn't answer for ${loc.name}; try again later.`}</p>
+                                        : <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-widest">No Forecast Data Available</p>}
                                 </div>
                             );
                         }
