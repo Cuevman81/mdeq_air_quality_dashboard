@@ -32,6 +32,8 @@ export default function Dashboard() {
     estimated?: boolean;
   } | null>(null);
   const [legendFilter, setLegendFilter] = useState<string[]>([]);
+  // How old the newest observation was when it loaded (the loader falls back up to 6 hours)
+  const [dataAgeHours, setDataAgeHours] = useState<number | null>(null);
 
   // Lock default date strictly to Mississippi Local Time (America/Chicago) to avoid evening UTC rollovers into 'tomorrow'
   // Default to Yesterday for historical as Today's daily averages won't exist yet
@@ -55,6 +57,8 @@ export default function Dashboard() {
       if (response && response.allData && response.allData.length > 0) {
         setData(response);
         setError('');
+        const newest = response.allData[0].observedAt;
+        setDataAgeHours(!dateStr && newest ? (Date.now() - Date.parse(newest)) / 3600e3 : null);
 
         // Prioritize Ozone for current, or first available for historical.
         // Use a functional update so loadData doesn't depend on `param` (avoids a render/fetch loop).
@@ -108,6 +112,14 @@ export default function Dashboard() {
       setStatewideSummary(null);
     }
   }, [data, activeTab]);
+
+  // Header shows the hour the data is for, not the browser's clock
+  const newestObservation = activeTab === 'current' ? data?.allData[0]?.observedAt : undefined;
+  const observedLabel = newestObservation
+    ? new Date(newestObservation).toLocaleString('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+    : null;
+  // AirNow publishes hour H at about H+35 min, so a normal load is 1-2 hours old
+  const isDelayed = dataAgeHours !== null && dataAgeHours > 3;
 
   const navItems = [
     { id: 'current', label: 'Current Air Quality', icon: Activity },
@@ -184,14 +196,20 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4 w-full lg:w-auto">
             <div className="glass px-6 py-3 rounded-2xl text-xs font-black text-slate-500 dark:text-slate-400 flex items-center gap-4 shadow-xl border-slate-200/50 dark:border-slate-800/50 grow lg:grow-0 justify-center group divide-x divide-slate-200 dark:divide-slate-800">
-              <div className="flex items-center gap-3 pr-4">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_oklch(var(--primary)/0.5)]"></div>
-                <span className="uppercase tracking-[0.2em] text-primary">Live</span>
-              </div>
-              <div className="flex items-center gap-3 pl-4">
+              {observedLabel && (
+                <div className="flex items-center gap-3 pr-4">
+                  {isDelayed
+                    ? <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                    : <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_oklch(var(--primary)/0.5)]"></div>}
+                  <span className={`uppercase tracking-[0.2em] ${isDelayed ? 'text-amber-600 dark:text-amber-400' : 'text-primary'}`}>{isDelayed ? 'Delayed' : 'Live'}</span>
+                </div>
+              )}
+              <div className={`flex items-center gap-3 ${observedLabel ? 'pl-4' : ''}`}>
                 <Clock size={16} className="text-slate-400 group-hover:text-primary transition-colors" suppressHydrationWarning />
-                <span className="uppercase tracking-widest tabular-nums">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                <span className="uppercase tracking-widest tabular-nums" suppressHydrationWarning>
+                  {activeTab === 'current'
+                    ? (observedLabel ? `Data for ${observedLabel}` : 'Loading latest hour...')
+                    : new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
               </div>
             </div>
@@ -258,7 +276,7 @@ export default function Dashboard() {
                     <input
                       type="date"
                       value={historicalDate}
-                      max={new Date().toISOString().split('T')[0]}
+                      max={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })}
                       onChange={(e) => setHistoricalDate(e.target.value)}
                       className="bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary font-bold text-sm transition-all"
                     />
