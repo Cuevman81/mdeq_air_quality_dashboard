@@ -234,7 +234,10 @@ export class DataService {
                 ) || siteName;
 
                 const location = CONFIG.sites[mappedSiteName as keyof typeof CONFIG.sites];
-                const isMississippi = location || (parts.length > 8 && parts[8].includes('Mississippi'));
+                // Site names aren't unique nationwide (Idaho DEQ also has a "Meridian"), so the
+                // AQS ID must be in Mississippi: state code 28, optionally after the 840 country code.
+                const inMississippi = /^(840)?28\d{7}$/.test((parts[2] || '').trim());
+                const isMississippi = inMississippi && (location || (parts.length > 8 && parts[8].includes('Mississippi')));
 
                 if (isMississippi && siteName && parameter && !isNaN(value)) {
                     if (mappedSiteName === 'Jackson NCORE' && parameter === 'RWD') return;
