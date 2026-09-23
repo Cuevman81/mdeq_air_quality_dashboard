@@ -551,12 +551,37 @@ export class DataService {
         return msTrendData;
     }
 
-    static async fetchForecastData(zipCode: string): Promise<ForecastItem[]> {
-        const currentDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); // YYYY-MM-DD
+    // AirNow's "Current Forecasts" service (/aq/forecast/current/) replaces the
+    // "Forecasts By Zip Code" service that retires on 2026-09-30. It renames the
+    // fields (DateForecast -> dateValid, Category{Number,Name} -> categoryNumber/
+    // categoryName, AQI -> aqi, ...) and calls ozone "OZONE" instead of "O3".
+    // Map either shape back to ForecastItem so ForecastView needs no changes.
+    static normalizeForecast(raw: Record<string, unknown>): ForecastItem {
+        const pick = (...keys: string[]) => {
+            for (const k of keys) if (raw[k] !== undefined && raw[k] !== null && raw[k] !== '') return raw[k];
+            return undefined;
+        };
+        const category = (raw.Category ?? {}) as { Number?: number; Name?: string };
+        const parameter = String(pick('ParameterName', 'parameterName') ?? '').trim();
+        const aqi = Number(pick('AQI', 'aqi'));
+        const discussion = pick('Discussion', 'discussion');
+        return {
+            DateForecast: String(pick('DateForecast', 'dateValid') ?? '').trim().slice(0, 10),
+            ParameterName: parameter.toUpperCase() === 'OZONE' ? 'O3' : parameter,
+            AQI: Number.isFinite(aqi) ? aqi : -1,
+            Category: {
+                Number: Number(category.Number ?? pick('categoryNumber') ?? 0),
+                Name: String(category.Name ?? pick('categoryName') ?? 'Unknown'),
+            },
+            Discussion: discussion === undefined ? undefined : String(discussion),
+        };
+    }
 
+    static async fetchForecastData(zipCode: string): Promise<ForecastItem[]> {
         // We proxy this through our Next.js API route to avoid CORS.
-        // The API Key is now injected server-side by the proxy for security.
-        const apiUrl = `https://www.airnowapi.org/aq/forecast/zipCode/?format=application/json&zipCode=${zipCode}&date=${currentDate}&distance=25`;
+        // The API Key is injected server-side by the proxy, which only accepts this exact URL shape.
+        // The current-forecast service returns today and the following days, so no &date= is needed.
+        const apiUrl = `https://www.airnowapi.org/aq/forecast/current/?format=application/json&zipCode=${zipCode}&distance=25`;
         const proxyUrl = `/api/proxy?url=${encodeURIComponent(apiUrl)}`;
 
         try {
@@ -564,7 +589,8 @@ export class DataService {
             const response = await fetch(proxyUrl);
 
             if (response.ok) {
-                return await response.json();
+                const rows = await response.json();
+                return Array.isArray(rows) ? rows.map((r: Record<string, unknown>) => DataService.normalizeForecast(r)) : [];
             }
 
             throw new Error(`Failed to fetch forecast: ${response.status}`);
