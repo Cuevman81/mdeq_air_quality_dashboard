@@ -4,6 +4,8 @@ A premium, high-performance, interactive dashboard built for the Mississippi Dep
 
 **Live Deployment:** [https://mdeq-air-quality-dashboard.vercel.app/](https://mdeq-air-quality-dashboard.vercel.app/)
 
+![Mississippi Ambient Air Quality dashboard: statewide status, regional hotspot and monitor map](docs/screenshot.png)
+
 ## 🌟 Key Features
 
 - **Premium Glassmorphism UI**: A modern, translucent design system with a high-end dark mode, vibrant HSL-based colors, and smooth micro-animations.
